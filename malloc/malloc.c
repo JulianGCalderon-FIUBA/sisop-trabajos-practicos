@@ -7,10 +7,12 @@
 
 #include "malloc.h"
 #include "printfmt.h"
+#include <sys/mman.h>
 
 #define ALIGN4(s) (((((s) -1) >> 2) << 2) + 4)
 #define REGION2PTR(r) ((r) + 1)
 #define PTR2REGION(ptr) ((struct region *) (ptr) -1)
+
 
 struct region {
 	bool free;
@@ -18,7 +20,12 @@ struct region {
 	struct region *next;
 };
 
-struct region *region_free_list = NULL;
+struct block {
+	struct region *region_list;
+};
+
+struct block *block = NULL;
+struct region *region_list = NULL;
 
 int amount_of_mallocs = 0;
 int amount_of_frees = 0;
@@ -38,7 +45,7 @@ print_statistics(void)
 static struct region *
 find_free_region(size_t size)
 {
-	struct region *next = region_free_list;
+	struct region *next = region_list;
 
 #ifdef FIRST_FIT
 	// Your code here for "first fit"
@@ -54,6 +61,7 @@ find_free_region(size_t size)
 static struct region *
 grow_heap(size_t size)
 {
+	/*
 	// finds the current heap break
 	struct region *curr = (struct region *) sbrk(0);
 
@@ -71,20 +79,40 @@ grow_heap(size_t size)
 	//
 	// (ref: sbrk(2))
 	if (curr == (struct region *) -1) {
-		return NULL;
-	}
-
-	// first time here
-	if (!region_free_list) {
-		region_free_list = curr;
-		atexit(print_statistics);
+	        return NULL;
 	}
 
 	curr->size = size;
 	curr->next = NULL;
 	curr->free = false;
 
-	return curr;
+	return curr;*/
+	// first time here
+	if (region_list) {
+		exit(EXIT_FAILURE);
+	}
+	struct region *region = mmap(
+	        NULL, 2048, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+	region->free = true;
+	region->size = 2048 - sizeof(region);
+	region->next = NULL;
+
+	region_list = region;
+	atexit(print_statistics);
+}
+
+void
+split(size_t size, struct region *region)
+{
+	struct region *split_region = (char) region + size + sizeof(region);
+
+	split_region->free = true;
+	split_region->size = region->size - sizeof(split_region) - size;
+	split_region->next = region->next;
+
+	region->free = false;
+	region->size = size;
+	region->next = split_region;
 }
 
 void *
@@ -104,6 +132,8 @@ malloc(size_t size)
 	if (!next) {
 		next = grow_heap(size);
 	}
+
+	split(size, next);
 
 	// Your code here
 	//
