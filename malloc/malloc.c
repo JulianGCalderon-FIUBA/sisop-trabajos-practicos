@@ -99,12 +99,14 @@ grow_heap(size_t size)
 
 	region_list = region;
 	atexit(print_statistics);
+
+	return region;
 }
 
 void
 split(size_t size, struct region *region)
 {
-	struct region *split_region = (char) region + size + sizeof(region);
+	struct region *split_region = (char *) region + size + sizeof(region);
 
 	split_region->free = true;
 	split_region->size = region->size - sizeof(split_region) - size;
