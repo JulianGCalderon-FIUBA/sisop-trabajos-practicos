@@ -13,12 +13,18 @@
 #define REGION2PTR(r) ((r) + 1)
 #define PTR2REGION(ptr) ((struct region *) (ptr) -1)
 
+#define SIZE_MINIMUM 64
+#define SMALL_BLOCK_SIZE 2048
 
 struct region {
 	bool free;
 	size_t size;
 	struct region *next;
+	struct region *previous;
 };
+
+void split(size_t size, struct region *region);
+void coalescing(struct region *left_region, struct region *right_region);
 
 struct block {
 	struct region *region_list;
@@ -45,7 +51,15 @@ print_statistics(void)
 static struct region *
 find_free_region(size_t size)
 {
-	struct region *next = region_list;
+	struct region *current = region_list;
+	if (!current)
+		return NULL;
+
+	while (!(current->free && current->size >= size)) {
+		if (!current->next)
+			return NULL;
+		current = current->next;
+	}
 
 #ifdef FIRST_FIT
 	// Your code here for "first fit"
@@ -55,7 +69,7 @@ find_free_region(size_t size)
 	// Your code here for "best fit"
 #endif
 
-	return next;
+	return current;
 }
 
 static struct region *
@@ -91,11 +105,17 @@ grow_heap(size_t size)
 	if (region_list) {
 		exit(EXIT_FAILURE);
 	}
-	struct region *region = mmap(
-	        NULL, 2048, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
-	region->free = true;
-	region->size = 2048 - sizeof(region);
+	struct region *region = mmap(NULL,
+	                             SMALL_BLOCK_SIZE,
+	                             PROT_READ | PROT_WRITE,
+	                             MAP_ANON | MAP_PRIVATE,
+	                             -1,
+	                             0);
+
+	region->size = SMALL_BLOCK_SIZE - sizeof(region);
 	region->next = NULL;
+	region->previous = NULL;
+	region->free = true;
 
 	region_list = region;
 	atexit(print_statistics);
@@ -106,20 +126,23 @@ grow_heap(size_t size)
 void
 split(size_t size, struct region *region)
 {
-	struct region *split_region = (char *) region + size + sizeof(region);
+	struct region *split_region =
+	        (struct region *) ((char *) region + size + sizeof(region));
 
-	split_region->free = true;
 	split_region->size = region->size - sizeof(split_region) - size;
 	split_region->next = region->next;
+	split_region->previous = region;
+	split_region->free = true;
 
-	region->free = false;
 	region->size = size;
 	region->next = split_region;
+	region->free = false;
 }
 
 void *
 malloc(size_t size)
 {
+	size = size < SIZE_MINIMUM ? SIZE_MINIMUM : size;
 	struct region *next;
 
 	// aligns to multiple of 4 bytes
@@ -135,13 +158,21 @@ malloc(size_t size)
 		next = grow_heap(size);
 	}
 
-	split(size, next);
+	if (next->size > size + sizeof(next))
+		split(size, next);
 
 	// Your code here
 	//
 	// hint: maybe split free regions?
 
 	return REGION2PTR(next);
+}
+
+void
+coalescing(struct region *left_region, struct region *right_region)
+{
+	left_region->next = right_region->next;
+	left_region->size += sizeof(right_region) + right_region->size;
 }
 
 void
@@ -154,6 +185,14 @@ free(void *ptr)
 	assert(curr->free == 0);
 
 	curr->free = true;
+
+	if (curr->previous && curr->previous->free && curr->free) {
+		coalescing(curr->previous, curr);
+	}
+	if (curr->next && curr->next->free && curr->free) {
+		coalescing(curr, curr->next);
+	}
+
 
 	// Your code here
 	//
