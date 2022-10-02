@@ -8,26 +8,33 @@
 #define HELLO "hello from test"
 #define TEST_STRING "FISOP malloc is working!"
 
-void
-alloc_memory()
-{
-	char *var = malloc(100);
-
-	strcpy(var, TEST_STRING);
-
-	printfmt("%s\n", var);
-
-	free(var);
-}
 
 int
 main(void)
 {
 	printfmt("%s\n", HELLO);
 
-	alloc_memory();
-	// alloc_memory();
-	// alloc_memory();
+	char *var1 = malloc(1000);
+
+	strcpy(var1, TEST_STRING);
+
+	printfmt("%s\n", var1);
+
+	char *var2 = malloc(1000);
+
+	strcpy(var2, TEST_STRING);
+
+	printfmt("%s\n", var2);
+
+	char *var3 = malloc(1000);
+
+	strcpy(var3, TEST_STRING);
+
+	printfmt("%s\n", var3);
+
+	free(var1);
+	free(var2);
+	free(var3);
 
 	return 0;
 }

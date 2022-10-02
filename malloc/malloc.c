@@ -127,6 +127,7 @@ grow_heap(size_t size)
 		return NULL;
 
 	if (!small_block_list) {
+		atexit(print_statistics);
 		small_block_list = block;
 	} else {
 		struct block *current = small_block_list;
@@ -136,7 +137,7 @@ grow_heap(size_t size)
 		current->next = block;
 		block->previous = current;
 	}
-	atexit(print_statistics);
+
 	return (struct region *) (block + 1);
 }
 
@@ -187,40 +188,63 @@ coalescing(struct region *left_region, struct region *right_region)
 	left_region->size += sizeof(right_region) + right_region->size;
 }
 
+struct block **
+block_list_for_size(size_t size)
+{
+	if (size <= SMALL_BLOCK_SIZE)
+		return &small_block_list;
+	if (size <= MEDIUM_BLOCK_SIZE)
+		return &medium_block_list;
+	if (size <= LARGE_BLOCK_SIZE)
+		return &large_block_list;
+
+	return NULL;
+}
+
 void
 free(void *ptr)
 {
 	// updates statistics
 	amount_of_frees++;
 
-	struct region *curr = PTR2REGION(ptr);
-	assert(curr->free == 0);
+	struct region *region = PTR2REGION(ptr);
+	assert(region->free == 0);
 
-	curr->free = true;
+	region->free = true;
 
-	if (curr->previous && curr->previous->free) {
-		coalescing(curr->previous, curr);
+	if (region->previous && region->previous->free) {
+		coalescing(region->previous, region);
 	}
-	if (curr->next && curr->next->free) {
-		coalescing(curr, curr->next);
+	if (region->next && region->next->free) {
+		coalescing(region, region->next);
 	}
-	/*
-	        if (!(curr->previous && curr->next)) {
-	                struct block *block =
-	                        (struct block *) ((char *) curr - sizeof(struct block));
 
-	                if (block->previous)
-	                        block->previous->next = block->next;
-	                if (block->next)
-	                        block->next->previous = block->previous;
+	if (!region->previous && !region->next) {
+		struct block *block =
+		        (struct block *) ((char *) region - sizeof(struct block));
 
-	                amount_of_munmap++;
-	                int status =
-	                        munmap(block, curr->size + sizeof(curr) + sizeof(block));
-	                if (status == -1) {
-	                        perror("Free failed (munmap error)");
-	                }
-	        }*/
+		if (block->previous)
+			block->previous->next = block->next;
+		if (block->next)
+			block->next->previous = block->previous;
+		size_t mapped_size =
+		        region->size + sizeof(region) + sizeof(block);
+
+		if (!block->previous && !block->next &&
+		    mapped_size == SMALL_BLOCK_SIZE)
+			return;
+
+		struct block **block_list = block_list_for_size(mapped_size);
+		if (!block->previous) {
+			*block_list = block->next;
+		}
+
+		amount_of_munmap++;
+		int status = munmap(block, mapped_size);
+		if (status == -1) {
+			perror("Free failed (munmap error)");
+		}
+	}
 }
 
 void *
