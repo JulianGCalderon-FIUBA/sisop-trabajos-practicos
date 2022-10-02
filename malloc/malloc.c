@@ -80,7 +80,6 @@ find_free_region(size_t size)
 {
 #ifdef FIRST_FIT
 
-
 	struct block *current = small_block_list;
 	if (!current)
 		return NULL;
@@ -111,8 +110,7 @@ map_block(size_t size)
 	block->next = NULL;
 	block->previous = NULL;
 
-	struct region *region =
-	        (struct region *) ((char *) block + sizeof(block));
+	struct region *region = (struct region *) (block + 1);
 	region->size = size - sizeof(block) - sizeof(region);
 	region->next = NULL;
 	region->previous = NULL;
@@ -124,14 +122,12 @@ map_block(size_t size)
 static struct region *
 grow_heap(size_t size)
 {
-	puts("empezando grow_heap");
 	struct block *block = map_block(SMALL_BLOCK_SIZE);
 	if (!block)
 		return NULL;
 
 	if (!small_block_list) {
 		small_block_list = block;
-		atexit(print_statistics);
 	} else {
 		struct block *current = small_block_list;
 		while (current->next) {
@@ -140,7 +136,7 @@ grow_heap(size_t size)
 		current->next = block;
 		block->previous = current;
 	}
-	puts("terminando grow_heap");
+	atexit(print_statistics);
 	return (struct region *) (block + 1);
 }
 
@@ -173,17 +169,13 @@ malloc(size_t size)
 	amount_of_mallocs++;
 	requested_memory += size;
 
-	write(2, "empezando free_region\n", 23);
 	next = find_free_region(size);
-	write(2, "terminando free_region\n", 23);
 
-	if (!next) {
+	if (!next)
 		next = grow_heap(size);
-	}
 
 	if (next->size > size + sizeof(next))
 		split(size, next);
-
 
 	return REGION2PTR(next);
 }
