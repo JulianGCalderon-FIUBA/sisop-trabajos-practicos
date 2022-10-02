@@ -15,6 +15,8 @@
 
 #define SIZE_MINIMUM 64
 #define SMALL_BLOCK_SIZE 2048
+#define MEDIUM_BLOCK_SIZE 131072
+#define LARGE_BLOCK_SIZE 4194304
 
 struct region {
 	bool free;
@@ -28,7 +30,12 @@ void coalescing(struct region *left_region, struct region *right_region);
 
 struct block {
 	struct region *region_list;
+	struct block *next;
 };
+
+struct block *small_block_list = NULL;
+struct block *medium_block_list = NULL;
+struct block *large_block_list = NULL;
 
 struct block *block = NULL;
 struct region *region_list = NULL;
@@ -75,6 +82,26 @@ find_free_region(size_t size)
 static struct region *
 grow_heap(size_t size)
 {
+	if (!small_block_list) {
+		struct block *block = mmap(NULL,
+		                           SMALL_BLOCK_SIZE,
+		                           PROT_READ | PROT_WRITE,
+		                           MAP_ANON | MAP_PRIVATE,
+		                           -1,
+		                           0);
+		block->next = NULL;
+
+		struct region *region =
+		        (struct region *) ((char *) block + sizeof(block));
+		region->size = SMALL_BLOCK_SIZE - sizeof(block) - sizeof(region);
+		region->next = NULL;
+		region->previous = NULL;
+		region->free = true;
+
+		small_block_list = block;
+		return region;
+	}
+
 	/*
 	// finds the current heap break
 	struct region *curr = (struct region *) sbrk(0);
@@ -102,25 +129,9 @@ grow_heap(size_t size)
 
 	return curr;*/
 	// first time here
-	if (region_list) {
-		exit(EXIT_FAILURE);
-	}
-	struct region *region = mmap(NULL,
-	                             SMALL_BLOCK_SIZE,
-	                             PROT_READ | PROT_WRITE,
-	                             MAP_ANON | MAP_PRIVATE,
-	                             -1,
-	                             0);
 
-	region->size = SMALL_BLOCK_SIZE - sizeof(region);
-	region->next = NULL;
-	region->previous = NULL;
-	region->free = true;
 
-	region_list = region;
 	atexit(print_statistics);
-
-	return region;
 }
 
 void
