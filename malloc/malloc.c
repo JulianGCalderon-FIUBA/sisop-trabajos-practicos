@@ -145,7 +145,7 @@ void
 split(size_t size, struct region *region)
 {
 	struct region *split_region =
-	        (struct region *) ((char *) region + size + sizeof(region));
+	        (struct region *) ((char *) (region + 1) + size);
 
 	split_region->size = region->size - sizeof(split_region) - size;
 	split_region->next = region->next;
