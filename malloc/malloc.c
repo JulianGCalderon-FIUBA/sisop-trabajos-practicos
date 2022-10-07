@@ -10,6 +10,7 @@
 #include "printfmt.h"
 #include <sys/mman.h>
 
+
 #define ALIGN4(s) (((((s) -1) >> 2) << 2) + 4)
 #define REGION2PTR(r) ((r) + 1)
 #define PTR2REGION(ptr) ((struct region *) (ptr) -1)
@@ -21,10 +22,12 @@
 #define FIRST_FIT
 #endif
 
+#define SUCCESS 0
 #define MINIMUM_SIZE 64
 #define SMALL_BLOCK_SIZE 2048
 #define MEDIUM_BLOCK_SIZE 131072
 #define LARGE_BLOCK_SIZE 4194304
+
 
 struct region {
 	bool free;
@@ -46,7 +49,11 @@ struct block **block_list_for_size(size_t size);
 struct block *map_block(size_t size);
 struct region *find_first_free_region_in_block_list(struct block *block_list,
                                                     size_t size);
+size_t block_size_for_size(size_t size);
+void free_block(struct block* block, size_t block_size);
+int list_index(size_t size);
 
+bool first_malloc = true;
 
 struct block *small_block_list = NULL;
 struct block *medium_block_list = NULL;
@@ -110,7 +117,22 @@ find_first_free_region_in_block_list(struct block *block_list, size_t size)
 	return NULL;
 }
 
-
+/*
+returns corresponding index for block size */
+int list_index(size_t size){
+	size = block_size_for_size(size);
+	switch (size)
+	{
+		case SMALL_BLOCK_SIZE:
+			return 0;
+		case MEDIUM_BLOCK_SIZE:
+			return 1;
+		case LARGE_BLOCK_SIZE:
+			return 2;
+		default:
+			return 3;
+	}
+}
 /*
 finds free region for size
 if does not find, returns null
@@ -121,15 +143,20 @@ find_free_region(size_t size)
 {
 #ifdef FIRST_FIT
 
-	struct region *region =
-	        find_first_free_region_in_block_list(small_block_list, size);
-	if (region) {
-		return region;
+	struct block *block_list[] = {small_block_list, medium_block_list, large_block_list, NULL};
+	int i = list_index(size);
+	struct region *region;
+	while (block_list[i]) {
+		region = find_first_free_region_in_block_list(block_list[i], size);
+		if (region)
+			return region;
+		i++;
 	}
 
 #endif
 
 #ifdef BEST_FIT
+	//struct region *region = find_best_free_region_in_block_list()
 #endif
 
 	return NULL;
@@ -160,6 +187,40 @@ map_block(size_t size)
 	return block;
 }
 
+size_t
+block_size_for_size(size_t size)
+{
+	size = size + sizeof(struct block) + sizeof(struct region);
+
+	if (size <= SMALL_BLOCK_SIZE)
+		return SMALL_BLOCK_SIZE;
+	if (size <= MEDIUM_BLOCK_SIZE)
+		return MEDIUM_BLOCK_SIZE;
+	if (size <= LARGE_BLOCK_SIZE)
+		return LARGE_BLOCK_SIZE;
+
+	return 0;
+}
+
+/**
+ * returns list of blocks for given size
+ */
+struct block **
+block_list_for_size(size_t size)
+{
+	
+	switch(size){
+		case SMALL_BLOCK_SIZE:
+			return &small_block_list;
+		case MEDIUM_BLOCK_SIZE:
+			return &medium_block_list;
+		case LARGE_BLOCK_SIZE:
+			return &large_block_list;
+		default:
+			return NULL;
+	}
+}
+
 /*
 creates new block for region of determined size
 returns region
@@ -167,18 +228,27 @@ returns region
 static struct region *
 grow_heap(size_t size)
 {
-	struct block *block = map_block(SMALL_BLOCK_SIZE);
+	if (first_malloc) {
+		atexit(print_statistics);
+		first_malloc = false;
+	}
+
+	size_t block_size = block_size_for_size(size);
+	if (block_size == 0)
+		return NULL;
+
+	struct block *block = map_block(block_size);
 	if (!block)
 		return NULL;
 
-	// SI SE LIBERA EL BLOQUE CHICO VOLVERA A LLAMAR A ATEXIT
-	// DEFINIMOS VARIABLE GLOBAL PARA INDICAR PRIMER LLAMADO?
-	// LO PODEMOS HACER EN MALLOC, CREO QUE SERIA MAS PROLIJO
-	if (!small_block_list) {
-		atexit(print_statistics);
-		small_block_list = block;
+	printfmt("Mapping block for size %i\n", block_size);
+
+	struct block **block_list = block_list_for_size(block_size);
+	
+	if (*block_list == NULL) {
+		*block_list = block;
 	} else {
-		struct block *current = small_block_list;
+		struct block *current = *block_list;
 		while (current->next) {
 			current = current->next;
 		}
@@ -212,6 +282,7 @@ split(size_t size, struct region *region)
 void *
 malloc(size_t size)
 {
+
 	size = size < MINIMUM_SIZE ? MINIMUM_SIZE : size;
 	struct region *region;
 
@@ -226,6 +297,8 @@ malloc(size_t size)
 
 	if (!region)
 		region = grow_heap(size);
+	if (!region)
+		return NULL;
 
 	if (region->size >= size + sizeof(struct region) + MINIMUM_SIZE)
 		split(size, region);
@@ -235,22 +308,6 @@ malloc(size_t size)
 	return REGION2PTR(region);
 }
 
-/**
- * returns list of blocks for given size
- */
-struct block **
-block_list_for_size(size_t size)
-{
-	if (size <= SMALL_BLOCK_SIZE)
-		return &small_block_list;
-	if (size <= MEDIUM_BLOCK_SIZE)
-		return &medium_block_list;
-	if (size <= LARGE_BLOCK_SIZE)
-		return &large_block_list;
-
-	return NULL;
-}
-
 /*
 combines two regions into single region
 */
@@ -258,7 +315,33 @@ void
 coalescing(struct region *left_region, struct region *right_region)
 {
 	left_region->next = right_region->next;
+	if(right_region->next)
+		right_region->next->previous = left_region;
+
 	left_region->size += sizeof(struct region) + right_region->size;
+
+}
+
+void
+free_block(struct block* block, size_t block_size)
+{	
+	struct block *previous_block = block->previous;
+	struct block *next_block = block->next;
+	struct block **block_list = block_list_for_size(block_size);
+	
+	amount_of_munmaps++;
+	int status = munmap(block, block_size);
+	if (status == SUCCESS) {
+		if (!previous_block)
+			*block_list = next_block;
+		else
+			previous_block->next = next_block;
+		
+		if (next_block)
+			next_block->previous = previous_block;
+	} else {
+		perror("Free failed (munmap error)");
+	}
 }
 
 void
@@ -269,39 +352,23 @@ free(void *ptr)
 
 	struct region *region = PTR2REGION(ptr);
 	assert(region->free == 0);
-
 	region->free = true;
 
 	if (region->previous && region->previous->free) {
 		coalescing(region->previous, region);
+		region = region->previous;
 	}
-	if (region->next && region->next->free) {
+	if (region->next && region->next->free) 
 		coalescing(region, region->next);
-	}
 
 	if (!region->previous && !region->next) {
 		struct block *block = REGION2BLOCK(region);
+		size_t block_size = region->size + sizeof(struct region) +
+							sizeof(struct block);
 
-		if (block->previous)
-			block->previous->next = block->next;
-		if (block->next)
-			block->next->previous = block->previous;
-
-		size_t mapped_size = region->size + sizeof(struct region) +
-		                     sizeof(struct block);
-
-
-		struct block **block_list = block_list_for_size(mapped_size);
-		if (!block->previous) {
-			*block_list = block->next;
-		}
-
-		amount_of_munmaps++;
-		int status = munmap(block, mapped_size);
-		if (status == -1) {
-			// SI FALLA, EL BLOQUE VA A ESTAR DESCONECTADO DE LA LISTA.
-			perror("Free failed (munmap error)");
-		}
+		printfmt("freeing block of size %i\n", block_size);
+							
+		free_block(block, block_size);
 	}
 }
 
