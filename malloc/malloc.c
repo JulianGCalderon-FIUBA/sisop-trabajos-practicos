@@ -51,7 +51,7 @@ struct block *map_block(size_t size);
 struct region *find_first_free_region_in_block_list(struct block *block_list,
                                                     size_t size);
 size_t block_size_for_size(size_t size);
-void free_block(struct block* block, size_t block_size);
+void free_block(struct block *block, size_t block_size);
 int list_index(size_t size);
 struct region *find_best_free_region_in_block_list(struct block *block,
                                                    size_t requested_size);
@@ -123,29 +123,33 @@ find_first_free_region_in_block_list(struct block *block_list, size_t size)
 }
 
 /*
-returns index corresponding to block list for given size 
+returns index corresponding to block list for given size
 */
-int list_index(size_t size){
+int
+list_index(size_t size)
+{
 	size = block_size_for_size(size);
-	switch (size)
-	{
-		case SMALL_BLOCK_SIZE:
-			return 0;
-		case MEDIUM_BLOCK_SIZE:
-			return 1;
-		case LARGE_BLOCK_SIZE:
-			return 2;
-		default:
-			return 3;
+	switch (size) {
+	case SMALL_BLOCK_SIZE:
+		return 0;
+	case MEDIUM_BLOCK_SIZE:
+		return 1;
+	case LARGE_BLOCK_SIZE:
+		return 2;
+	default:
+		return 3;
 	}
 }
 
-struct region* find_best_free_region_in_block(struct block *block, size_t requested_size) {
+struct region *
+find_best_free_region_in_block(struct block *block, size_t requested_size)
+{
 	struct region *best_region = NULL;
 	size_t best_region_size = LARGE_BLOCK_SIZE;
 	struct region *region = BLOCK2REGION(block);
 	while (region) {
-		if (region->size > requested_size && region->size < best_region_size) {
+		if (region->size > requested_size &&
+		    region->size < best_region_size) {
 			best_region_size = region->size;
 			best_region = region;
 		}
@@ -154,11 +158,13 @@ struct region* find_best_free_region_in_block(struct block *block, size_t reques
 	return best_region;
 }
 
-struct region* find_best_free_region_in_block_list(struct block *block, size_t requested_size) {
+struct region *
+find_best_free_region_in_block_list(struct block *block, size_t requested_size)
+{
 	struct region *best_region = NULL;
 	size_t best_region_size = LARGE_BLOCK_SIZE;
 	struct region *region;
-	while(block) {
+	while (block) {
 		region = find_best_free_region_in_block(block, requested_size);
 		if (region && region->size < best_region_size) {
 			best_region_size = region->size;
@@ -177,11 +183,13 @@ else, returns region
 static struct region *
 find_free_region(size_t size)
 {
-	struct block *block_list[] = {small_block_list, medium_block_list, large_block_list, NULL};
+	struct block *block_list[] = {
+		small_block_list, medium_block_list, large_block_list, NULL
+	};
 	struct region *region;
 
 #ifdef FIRST_FIT
-	for(int i = list_index(size); block_list[i]; i++) {
+	for (int i = list_index(size); block_list[i]; i++) {
 		region = find_first_free_region_in_block_list(block_list[i], size);
 		if (region)
 			return region;
@@ -191,11 +199,11 @@ find_free_region(size_t size)
 #endif
 
 #ifdef BEST_FIT
-	struct region* best = NULL;
+	struct region *best = NULL;
 	size_t best_region_size = LARGE_BLOCK_SIZE;
-	for(int i = list_index(size); block_list[i]; i++) {
+	for (int i = list_index(size); block_list[i]; i++) {
 		region = find_best_free_region_in_block_list(block_list[i], size);
-		if (region && region->size < best_region_size){
+		if (region && region->size < best_region_size) {
 			best_region_size = region->size;
 			best = region;
 		}
@@ -251,16 +259,15 @@ block_size_for_size(size_t size)
 struct block **
 block_list_for_size(size_t size)
 {
-	
-	switch(size){
-		case SMALL_BLOCK_SIZE:
-			return &small_block_list;
-		case MEDIUM_BLOCK_SIZE:
-			return &medium_block_list;
-		case LARGE_BLOCK_SIZE:
-			return &large_block_list;
-		default:
-			return NULL;
+	switch (size) {
+	case SMALL_BLOCK_SIZE:
+		return &small_block_list;
+	case MEDIUM_BLOCK_SIZE:
+		return &medium_block_list;
+	case LARGE_BLOCK_SIZE:
+		return &large_block_list;
+	default:
+		return NULL;
 	}
 }
 
@@ -287,7 +294,7 @@ grow_heap(size_t size)
 	printfmt("Mapping block for size %i\n", block_size);
 
 	struct block **block_list = block_list_for_size(block_size);
-	
+
 	if (*block_list == NULL) {
 		*block_list = block;
 	} else {
@@ -335,7 +342,7 @@ on error returns NULL
 void *
 malloc(size_t size)
 {
-	if(size == 0)
+	if (size == 0)
 		return NULL;
 	size = size < MINIMUM_SIZE ? MINIMUM_SIZE : size;
 	struct region *region;
@@ -369,7 +376,7 @@ void
 coalescing(struct region *left_region, struct region *right_region)
 {
 	left_region->next = right_region->next;
-	if(right_region->next)
+	if (right_region->next)
 		right_region->next->previous = left_region;
 
 	left_region->size += sizeof(struct region) + right_region->size;
@@ -380,12 +387,12 @@ frees given block
 on error does nothing
 */
 void
-free_block(struct block* block, size_t block_size)
-{	
+free_block(struct block *block, size_t block_size)
+{
 	struct block *previous_block = block->previous;
 	struct block *next_block = block->next;
 	struct block **block_list = block_list_for_size(block_size);
-	
+
 	amount_of_munmaps++;
 	int status = munmap(block, block_size);
 	if (status == SUCCESS) {
@@ -393,7 +400,7 @@ free_block(struct block* block, size_t block_size)
 			*block_list = next_block;
 		else
 			previous_block->next = next_block;
-		
+
 		if (next_block)
 			next_block->previous = previous_block;
 	} else {
@@ -419,34 +426,34 @@ free(void *ptr)
 		coalescing(region->previous, region);
 		region = region->previous;
 	}
-	
-	if (region->next && region->next->free) 
+
+	if (region->next && region->next->free)
 		coalescing(region, region->next);
 
 	if (!region->previous && !region->next) {
 		struct block *block = REGION2BLOCK(region);
 		size_t block_size = region->size + sizeof(struct region) +
-							sizeof(struct block);
+		                    sizeof(struct block);
 
 		printfmt("freeing block of size %i\n", block_size);
-							
+
 		free_block(block, block_size);
 	}
 }
 
-void*
+void *
 calloc(size_t nmemb, size_t size)
 {
- 	if(size == 0 || nmemb == 0)
+	if (size == 0 || nmemb == 0)
 		return NULL;
-	if(nmemb > INT_MAX / size){
+	if (nmemb > INT_MAX / size) {
 		perror("Overflow in calloc");
 		return NULL;
 	}
 
-	size_t total_size = nmemb*size;
-	struct region* region = malloc(total_size);
-	if(!region)
+	size_t total_size = nmemb * size;
+	struct region *region = malloc(total_size);
+	if (!region)
 		return NULL;
 	region = memset(region, 0, total_size);
 
@@ -457,15 +464,21 @@ calloc(size_t nmemb, size_t size)
 void *
 realloc(void *ptr, size_t size)
 {
-	if (size > LARGE_BLOCK_SIZE - sizeof(struct block) - sizeof(struct region)) {
+	if (size >
+	    LARGE_BLOCK_SIZE - sizeof(struct block) - sizeof(struct region)) {
 		// unsupported size
 		return NULL;
 	}
 
-	if(ptr == NULL)
-	    return malloc(size);
-		
-	struct region* region = PTR2REGION(ptr);
+	if (ptr == NULL)
+		return malloc(size);
+
+	if (size == 0) {
+		free(ptr);
+		return;
+	}
+
+	struct region *region = PTR2REGION(ptr);
 
 	long int signed_offset = size - region->size;
 	if (signed_offset <= 0) {
@@ -474,10 +487,12 @@ realloc(void *ptr, size_t size)
 		return ptr;
 	}
 	size_t size_offset = (size_t) signed_offset;
-	if (region->next && region->next->free && region->next->size + sizeof(struct region) >= size_offset) {
-		region->size = region->size + region->next->size + sizeof(struct region);
+	if (region->next && region->next->free &&
+	    region->next->size + sizeof(struct region) >= size_offset) {
+		region->size = region->size + region->next->size +
+		               sizeof(struct region);
 		region->next = region->next->next;
-		if (region->next) 
+		if (region->next)
 			region->next->previous = region;
 
 		if (region->size >= size + sizeof(struct region) + MINIMUM_SIZE)
@@ -485,7 +500,7 @@ realloc(void *ptr, size_t size)
 		return ptr;
 	}
 
-	void* res = malloc(size);
+	void *res = malloc(size);
 	memcpy(res, ptr, (PTR2REGION(ptr))->size);
 	free(ptr);
 	return res;
