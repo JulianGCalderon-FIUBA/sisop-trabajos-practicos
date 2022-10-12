@@ -183,14 +183,15 @@ else, returns region
 static struct region *
 find_free_region(size_t size)
 {
-	struct block *block_list[] = {
+	struct block *block_lists[] = {
 		small_block_list, medium_block_list, large_block_list, NULL
 	};
 	struct region *region;
 
 #ifdef FIRST_FIT
-	for (int i = list_index(size); block_list[i]; i++) {
-		region = find_first_free_region_in_block_list(block_list[i], size);
+	for (int i = list_index(size); block_lists[i]; i++) {
+		region = find_first_free_region_in_block_list(block_lists[i],
+		                                              size);
 		if (region)
 			return region;
 	}
@@ -201,7 +202,7 @@ find_free_region(size_t size)
 #ifdef BEST_FIT
 	struct region *best = NULL;
 	size_t best_region_size = LARGE_BLOCK_SIZE;
-	for (int i = list_index(size); block_list[i]; i++) {
+	for (int i = list_index(size); block_lists[i]; i++) {
 		region = find_best_free_region_in_block_list(block_list[i], size);
 		if (region && region->size < best_region_size) {
 			best_region_size = region->size;
@@ -224,6 +225,7 @@ map_block(size_t size)
 	        NULL, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 	if (!block)
 		return NULL;
+
 	block->next = NULL;
 	block->previous = NULL;
 
@@ -415,6 +417,8 @@ panics if region is already free
 void
 free(void *ptr)
 {
+	if (!ptr)
+		return NULL;
 	// updates statistics
 	amount_of_frees++;
 
