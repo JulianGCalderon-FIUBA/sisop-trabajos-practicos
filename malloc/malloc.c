@@ -419,6 +419,7 @@ free(void *ptr)
 {
 	if (!ptr)
 		return NULL;
+
 	// updates statistics
 	amount_of_frees++;
 
