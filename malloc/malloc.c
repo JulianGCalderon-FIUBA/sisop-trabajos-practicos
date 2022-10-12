@@ -418,7 +418,7 @@ void
 free(void *ptr)
 {
 	if (!ptr)
-		return NULL;
+		return;
 
 	// updates statistics
 	amount_of_frees++;
@@ -480,7 +480,7 @@ realloc(void *ptr, size_t size)
 
 	if (size == 0) {
 		free(ptr);
-		return;
+		return NULL;
 	}
 
 	struct region *region = PTR2REGION(ptr);
@@ -494,11 +494,12 @@ realloc(void *ptr, size_t size)
 	size_t size_offset = (size_t) signed_offset;
 	if (region->next && region->next->free &&
 	    region->next->size + sizeof(struct region) >= size_offset) {
-		region->size = region->size + region->next->size +
-		               sizeof(struct region);
-		region->next = region->next->next;
-		if (region->next)
-			region->next->previous = region;
+		// region->size = region->size + region->next->size +
+		//                sizeof(struct region);
+		// region->next = region->next->next;
+		// if (region->next)
+		// 	region->next->previous = region;
+		coalescing(region, region->next);
 
 		if (region->size >= size + sizeof(struct region) + MINIMUM_SIZE)
 			split(size, region);
