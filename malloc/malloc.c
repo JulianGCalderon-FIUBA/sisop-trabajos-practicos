@@ -32,6 +32,7 @@
 
 struct region {
 	bool free;
+	int magic;
 	size_t size;
 	struct region *next;
 	struct region *previous;
@@ -233,6 +234,7 @@ map_block(size_t size)
 	region->size = size - sizeof(struct block) - sizeof(struct region);
 	region->next = NULL;
 	region->previous = NULL;
+	region->magic = REGION2PTR(region);
 	region->free = true;
 
 	return block;
@@ -325,6 +327,7 @@ split(size_t size, struct region *region)
 	split_region->next = region->next;
 	split_region->previous = region;
 	split_region->free = true;
+	split_region->magic = REGION2PTR(split_region);
 
 	if (region->next)
 		region->next->previous = split_region;
@@ -424,6 +427,7 @@ free(void *ptr)
 	amount_of_frees++;
 
 	struct region *region = PTR2REGION(ptr);
+	assert(region->magic == ptr);
 	assert(region->free == 0);
 	region->free = true;
 
