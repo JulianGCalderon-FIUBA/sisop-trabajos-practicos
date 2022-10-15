@@ -40,25 +40,28 @@ struct region {
 	struct region *previous;
 };
 
-
 struct block {
 	struct block *next;
 	struct block *previous;
 };
 
-void split(size_t size, struct region *region);
-void coalescing(struct region *left_region, struct region *right_region);
+size_t block_size_for_size(size_t size);
+int list_index(size_t size);
+
 struct region *find_first_free_region_in_block(struct block *block, size_t size);
-struct block *map_block(size_t size);
 struct region *find_first_free_region_in_block_list(struct block *block_list,
                                                     size_t size);
-size_t block_size_for_size(size_t size);
-void free_block(struct block *block, size_t block_size);
-int list_index(size_t size);
-struct region *find_best_free_region_in_block_list(struct block *block,
-                                                   size_t requested_size);
 struct region *find_best_free_region_in_block(struct block *block,
                                               size_t requested_size);
+struct region *find_best_free_region_in_block_list(struct block *block,
+                                                   size_t requested_size);
+
+struct block *map_block(size_t size);
+
+void split(size_t size, struct region *region);
+void coalescing(struct region *left_region, struct region *right_region);
+
+void free_block(struct block *block, size_t block_size);
 
 void print_statistics(void);
 
@@ -129,7 +132,7 @@ list_index(size_t size)
 /*
 block must be valid.
 if does not find free region, returns NULL
-else, returns region
+else, returns first free region
 */
 struct region *
 find_first_free_region_in_block(struct block *block, size_t size)
@@ -166,6 +169,11 @@ find_first_free_region_in_block_list(struct block *block_list, size_t size)
 	return NULL;
 }
 
+/*
+block must be valid.
+if does not find free region, returns NULL
+else, returns best free region
+*/
 struct region *
 find_best_free_region_in_block(struct block *block, size_t requested_size)
 {
@@ -183,6 +191,11 @@ find_best_free_region_in_block(struct block *block, size_t requested_size)
 	return best;
 }
 
+/*
+if block_list is empty, returns NULL
+if does not find free region, returns NULL
+else, returns region
+*/
 struct region *
 find_best_free_region_in_block_list(struct block *block, size_t requested_size)
 {
@@ -404,7 +417,7 @@ free_block(struct block *block, size_t block_size)
 
 /*
 frees region ptr points to
-panics if region is already free
+panics if region is already free or does not belong to library
 */
 void
 free(void *ptr)
@@ -438,6 +451,10 @@ free(void *ptr)
 	}
 }
 
+/*
+returns free region with given size initialized with 0
+on error returns NULL
+*/
 void *
 calloc(size_t nmemb, size_t size)
 {
@@ -457,6 +474,10 @@ calloc(size_t nmemb, size_t size)
 	return region;
 }
 
+/*
+returns new region with given size and ptr's content
+on error returns NULL
+*/
 void *
 realloc(void *ptr, size_t size)
 {
