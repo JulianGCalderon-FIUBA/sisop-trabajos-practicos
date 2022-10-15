@@ -23,10 +23,10 @@ OBJS := $(SRCS:%.c=%.o)
 all: $(EXECS) $(EXECD)
 
 $(EXECS): $(OBJS)
-	cc $(CFLAGS) -D TEST -o $@ $^
+	cc $(CFLAGS) -o $@ $^
 
 $(EXECD): $(filter-out malloc.o, $(OBJS))
-	cc $(CFLAGS) -D TEST -o $@ $^
+	cc $(CFLAGS) -o $@ $^
 
 $(LIBNAME): malloc.c printfmt.o
 	cc $(LIBFLAGS) -o $@ $^
