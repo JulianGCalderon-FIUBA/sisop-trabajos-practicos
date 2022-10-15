@@ -1,4 +1,4 @@
-CFLAGS := -ggdb3 -O2 -Wall -Wextra -std=gnu11
+CFLAGS := -ggdb3 -O0 -Wall -Wextra -std=gnu11
 CFLAGS += -Wmissing-prototypes
 LIBFLAGS := -shared -fPIC $(CFLAGS)
 
@@ -23,10 +23,10 @@ OBJS := $(SRCS:%.c=%.o)
 all: $(EXECS) $(EXECD)
 
 $(EXECS): $(OBJS)
-	cc $(CFLAGS) -o $@ $^
+	cc $(CFLAGS) -D TEST -o $@ $^
 
 $(EXECD): $(filter-out malloc.o, $(OBJS))
-	cc $(CFLAGS) -o $@ $^
+	cc $(CFLAGS) -D TEST -o $@ $^
 
 $(LIBNAME): malloc.c printfmt.o
 	cc $(LIBFLAGS) -o $@ $^

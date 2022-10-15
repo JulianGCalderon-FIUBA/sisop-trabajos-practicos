@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "printfmt.h": "c",
+        "malloc_test.h": "c"
+    }
+}

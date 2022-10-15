@@ -1,6 +1,5 @@
 #define _DEFAULT_SOURCE
 
-#include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,6 +9,7 @@
 #include <errno.h>
 
 #include "malloc.h"
+#include "malloc_test.h"
 #include "printfmt.h"
 #include <sys/mman.h>
 
@@ -34,7 +34,7 @@
 #define LARGE_BLOCK_SIZE 4194304
 
 struct region {
-	void* magic;
+	void *magic;
 	bool free;
 	size_t size;
 	struct region *next;
@@ -68,47 +68,83 @@ struct block *medium_block_list = NULL;
 struct block *large_block_list = NULL;
 struct block *block = NULL;
 
-size_t block_size_list[] = {SMALL_BLOCK_SIZE, MEDIUM_BLOCK_SIZE, LARGE_BLOCK_SIZE, 0};
+size_t block_size_list[] = {
+	SMALL_BLOCK_SIZE, MEDIUM_BLOCK_SIZE, LARGE_BLOCK_SIZE, 0
+};
 
 struct block **block_lists[] = {
 	&small_block_list, &medium_block_list, &large_block_list, NULL
 };
 
-struct stats_info {
-	int amount_of_mallocs;
-	int amount_of_frees;
-	int requested_memory;
-	int amount_of_mmaps;
-	int amount_of_munmaps;
-};
+int amount_of_mallocs = 0;
+int amount_of_frees = 0;
+int requested_memory = 0;
+int amount_of_mmaps = 0;
+int amount_of_munmaps = 0;
 
-struct stats_info stats {
+#ifdef TEST
+void
+reset_statistics()
+{
 	amount_of_mallocs = 0;
 	amount_of_frees = 0;
-	requested_memory =  0;
+	requested_memory = 0;
 	amount_of_mmaps = 0;
 	amount_of_munmaps = 0;
-};
-
-#ifdef TEST 
-
-void reset_statistics(){
-	stats.amount_of_mallocs = 0;
-	stats.amount_of_frees = 0;
-	stats.requested_memory =  0;
-	stats.amount_of_mmaps = 0;
-	stats.amount_of_munmaps = 0;
 }
 
-void print_statistics(){
-	printfmt("mallocs:   %d\n", stats.amount_of_mallocs);
-	printfmt("frees:     %d\n", stats.amount_of_frees);
-	printfmt("requested: %d\n", stats.requested_memory);
-	printfmt("mmaps: %d\n", stats.amount_of_mmaps);
-	printfmt("unmaps: %d\n", stats.amount_of_munmaps);
+void
+get_statistics(struct stats_info *test_stats)
+{
+	test_stats->amount_of_mallocs = amount_of_mallocs;
+	test_stats->amount_of_frees = amount_of_frees;
+	test_stats->requested_memory = requested_memory;
+	test_stats->amount_of_mmaps = amount_of_mmaps;
+	test_stats->amount_of_munmaps = amount_of_munmaps;
 }
 
+void
+print_statistics()
+{
+	printfmt("mallocs:   %d\n", amount_of_mallocs);
+	printfmt("frees:     %d\n", amount_of_frees);
+	printfmt("requested: %d\n", requested_memory);
+	printfmt("mmaps: %d\n", amount_of_mmaps);
+	printfmt("unmaps: %d\n", amount_of_munmaps);
+}
 #endif
+
+/*
+returns nearest block size for given size
+*/
+size_t
+block_size_for_size(size_t size)
+{
+	size = size + sizeof(struct block) + sizeof(struct region);
+
+	for (int i = 0; block_size_list[i]; i++) {
+		if (size <= block_size_list[i]) {
+			return block_size_list[i];
+		}
+	}
+	return 0;
+}
+
+/*
+returns index corresponding to block list for given size
+*/
+int
+list_index(size_t size)
+{
+	int i = 0;
+
+	for (; block_size_list[i]; i++) {
+		if (size == block_size_list[i]) {
+			return i;
+		}
+	}
+	return i;
+}
 
 /*
 block must be valid.
@@ -150,37 +186,28 @@ find_first_free_region_in_block_list(struct block *block_list, size_t size)
 	return NULL;
 }
 
-/*
-returns index corresponding to block list for given size
-*/
-int
-list_index(size_t size)
-{
-	size = block_size_for_size(size);
-	int i = 0;
-
-	for(; block_size_list[i]; i++){
-		if(size == block_size_list[i])
-			break;
-	}
-	return i;
-}
-
 struct region *
 find_best_free_region_in_block(struct block *block, size_t requested_size)
 {
-	struct region *best_region = NULL;
+	struct region *best = NULL;
 	size_t best_region_size = LARGE_BLOCK_SIZE;
 	struct region *region = BLOCK2REGION(block);
 	while (region) {
-		if (region->size > requested_size &&
-		    region->size < best_region_size) {
+		if (region->size >= requested_size &&
+		    region->size < best_region_size && region->free) {
 			best_region_size = region->size;
-			best_region = region;
+			best = region;
 		}
 		region = region->next;
+
+		// printfmt("=============\n");
+		// if (region)
+		// 	printfmt("curr: %i\n", region->size);
+		// if (best)
+		// 	printfmt("best: %i\n", best->size);
+		// printfmt("=============\n");
 	}
-	return best_region;
+	return best;
 }
 
 struct region *
@@ -208,11 +235,10 @@ else, returns region
 static struct region *
 find_free_region(size_t size)
 {
-	
 	struct region *region;
 
 #ifdef FIRST_FIT
-	for (int i = list_index(size); block_lists[i]; i++) {
+	for (int i = list_index(block_size_for_size(size)); block_lists[i]; i++) {
 		region = find_first_free_region_in_block_list(*block_lists[i],
 		                                              size);
 		if (region)
@@ -225,8 +251,9 @@ find_free_region(size_t size)
 #ifdef BEST_FIT
 	struct region *best = NULL;
 	size_t best_region_size = LARGE_BLOCK_SIZE;
-	for (int i = list_index(size); block_lists[i]; i++) {
-		region = find_best_free_region_in_block_list(*block_lists[i], size);
+	for (int i = list_index(block_size_for_size(size)); block_lists[i]; i++) {
+		region = find_best_free_region_in_block_list(*block_lists[i],
+		                                             size);
 		if (region && region->size < best_region_size) {
 			best_region_size = region->size;
 			best = region;
@@ -243,7 +270,7 @@ initializes block with single free region
 struct block *
 map_block(size_t size)
 {
-	stats.amount_of_mmaps++;
+	amount_of_mmaps++;
 	struct block *block = mmap(
 	        NULL, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 	if (!block)
@@ -261,21 +288,7 @@ map_block(size_t size)
 
 	return block;
 }
-/*
-returns nearest block size for given size
-*/
-size_t
-block_size_for_size(size_t size)
-{
-	size = size + sizeof(struct block) + sizeof(struct region);
 
-	for(int i = 0; block_size_list[i]; i++){
-		if(size <= block_size_list[i]){
-			return block_size_list[i];
-		}
-	}
-	return 0;
-}
 
 /*
 creates new block for region of determined size
@@ -284,12 +297,12 @@ returns region
 static struct region *
 grow_heap(size_t size)
 {
-	#ifdef TEST
+#ifdef TEST
 	if (first_malloc) {
 		atexit(print_statistics);
 		first_malloc = false;
 	}
-	#endif
+#endif
 
 	size_t block_size = block_size_for_size(size);
 	if (block_size == 0)
@@ -299,9 +312,7 @@ grow_heap(size_t size)
 	if (!block)
 		return NULL;
 
-	printfmt("Mapping block for size %i\n", block_size);
-
-	struct block **block_list = block_lists[list_index(size)];
+	struct block **block_list = block_lists[list_index(block_size)];
 
 	if (*block_list == NULL) {
 		*block_list = block;
@@ -367,7 +378,7 @@ malloc(size_t size)
 
 	if (!region)
 		region = grow_heap(size);
-	if (!region){
+	if (!region) {
 		errno = ENOMEM;
 		return NULL;
 	}
@@ -404,6 +415,7 @@ free_block(struct block *block, size_t block_size)
 	struct block *next_block = block->next;
 	struct block **block_list = block_lists[list_index(block_size)];
 
+
 	amount_of_munmaps++;
 	int status = munmap(block, block_size);
 	if (status == SUCCESS) {
@@ -433,9 +445,10 @@ free(void *ptr)
 	amount_of_frees++;
 
 	struct region *region = PTR2REGION(ptr);
-	assert(region->magic == ptr);
-	assert(region->free == 0);
+	if (region->magic != ptr || region->free)
+		return;
 	region->free = true;
+
 
 	if (region->previous && region->previous->free) {
 		coalescing(region->previous, region);
@@ -449,8 +462,6 @@ free(void *ptr)
 		struct block *block = REGION2BLOCK(region);
 		size_t block_size = region->size + sizeof(struct region) +
 		                    sizeof(struct block);
-
-		printfmt("freeing block of size %i\n", block_size);
 
 		free_block(block, block_size);
 	}
@@ -475,11 +486,11 @@ calloc(size_t nmemb, size_t size)
 	return region;
 }
 
-
 void *
 realloc(void *ptr, size_t size)
 {
-	if (size > LARGE_BLOCK_SIZE - sizeof(struct block) - sizeof(struct region)) {
+	if (size >
+	    LARGE_BLOCK_SIZE - sizeof(struct block) - sizeof(struct region)) {
 		errno = ENOMEM;
 		return NULL;
 	}
