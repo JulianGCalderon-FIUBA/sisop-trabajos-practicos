@@ -8,6 +8,24 @@
 #define HELLO "hello from test"
 #define TEST_STRING "FISOP malloc is working!"
 
+void 
+test_realloc(
+	char *ptr = realloc(NULL, 128);
+	if (ptr == NULL) {
+		printfmt("Realloc failed to realloc NULL ptr\n");
+	}
+	strcpy(ptr, "Realloc works for bigger size\n");
+	realloc(ptr, 256);
+	puts(ptr);
+
+	strcpy(ptr, "Realloc works for smaller size\n");
+	realloc(ptr, 64);
+	puts(ptr);
+
+	strcpy(ptr, "Realloc works for VERY bigger sizes\n");
+	realloc(ptr, 1048576); // doesn't fit in a small block
+	puts(ptr);
+);
 
 int
 main(void)
