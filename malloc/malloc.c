@@ -60,6 +60,8 @@ struct region *find_best_free_region_in_block_list(struct block *block,
 struct region *find_best_free_region_in_block(struct block *block,
                                               size_t requested_size);
 
+void print_statistics(void);
+
 bool first_malloc = true;
 
 struct block *small_block_list = NULL;
