@@ -9,7 +9,6 @@
 #include <errno.h>
 
 #include "malloc.h"
-#include "malloc_test.h"
 #include "printfmt.h"
 #include <sys/mman.h>
 
@@ -82,37 +81,16 @@ int requested_memory = 0;
 int amount_of_mmaps = 0;
 int amount_of_munmaps = 0;
 
-#ifdef TEST
-void
-reset_statistics()
-{
-	amount_of_mallocs = 0;
-	amount_of_frees = 0;
-	requested_memory = 0;
-	amount_of_mmaps = 0;
-	amount_of_munmaps = 0;
-}
-
-void
-get_statistics(struct stats_info *test_stats)
-{
-	test_stats->amount_of_mallocs = amount_of_mallocs;
-	test_stats->amount_of_frees = amount_of_frees;
-	test_stats->requested_memory = requested_memory;
-	test_stats->amount_of_mmaps = amount_of_mmaps;
-	test_stats->amount_of_munmaps = amount_of_munmaps;
-}
-
 void
 print_statistics()
 {
+	printfmt("== STATISTICS ==\n");
 	printfmt("mallocs:   %d\n", amount_of_mallocs);
 	printfmt("frees:     %d\n", amount_of_frees);
 	printfmt("requested: %d\n", requested_memory);
 	printfmt("mmaps: %d\n", amount_of_mmaps);
 	printfmt("unmaps: %d\n", amount_of_munmaps);
 }
-#endif
 
 /*
 returns nearest block size for given size
@@ -199,13 +177,6 @@ find_best_free_region_in_block(struct block *block, size_t requested_size)
 			best = region;
 		}
 		region = region->next;
-
-		// printfmt("=============\n");
-		// if (region)
-		// 	printfmt("curr: %i\n", region->size);
-		// if (best)
-		// 	printfmt("best: %i\n", best->size);
-		// printfmt("=============\n");
 	}
 	return best;
 }
@@ -297,12 +268,10 @@ returns region
 static struct region *
 grow_heap(size_t size)
 {
-#ifdef TEST
 	if (first_malloc) {
 		atexit(print_statistics);
 		first_malloc = false;
 	}
-#endif
 
 	size_t block_size = block_size_for_size(size);
 	if (block_size == 0)
