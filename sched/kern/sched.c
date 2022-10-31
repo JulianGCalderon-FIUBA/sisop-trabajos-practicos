@@ -18,16 +18,16 @@ sched_yield(void)
 
 	struct Env *idle;
 	int curenv_pos = 0;
-	
-	if(curenv) {
+
+	if (curenv) {
 		curenv_pos = ENVX(curenv->env_id);
 	}
 
-	
+
 	int i = (curenv_pos + 1) % NENV;
 
 
-	while(envs[i].env_status != ENV_RUNNABLE && i != curenv_pos) {
+	while (envs[i].env_status != ENV_RUNNABLE && i != curenv_pos) {
 		i++;
 
 		if (i == NENV) {
@@ -35,17 +35,20 @@ sched_yield(void)
 		}
 	}
 
+	if (curenv && envs[i].env_status == ENV_RUNNING)
+		env_run(&envs[i]);
+
 
 	if (envs[i].env_status == ENV_RUNNABLE) {
 		env_run(&envs[i]);
 	}
 
-	//cprintf("not_to_run: %d\n", i);
-	
-	//cprintf("sched_halt\n");
-	// sched_halt never returns
+	// cprintf("not_to_run: %d\n", i);
+
+	// cprintf("sched_halt\n");
+	//  sched_halt never returns
 	sched_halt();
-	
+
 	// Implement simple round-robin scheduling.
 	//
 	// Search through 'envs' for an ENV_RUNNABLE environment in
@@ -63,7 +66,6 @@ sched_yield(void)
 
 	// Your code here
 	// Wihtout scheduler, keep runing the last environment while it exists
- 
 }
 
 // Halt this CPU when there is nothing to do. Wait until the
@@ -100,8 +102,8 @@ sched_halt(void)
 	// Release the big kernel lock as if we were "leaving" the kernel
 	unlock_kernel();
 
-	// Once the scheduler has finishied it's work, print statistics on performance.
-	// Your code here
+	// Once the scheduler has finishied it's work, print statistics on
+	// performance. Your code here
 
 	// Reset stack pointer, enable interrupts and then halt.
 	asm volatile("movl $0, %%ebp\n"
