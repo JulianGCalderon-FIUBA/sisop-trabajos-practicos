@@ -13,8 +13,10 @@ context_switch:
 	popl %eax				// guardo la direccion del trapframe en el registro %eax
 	movl %eax, %esp   		// muevo el stack pointer al inicio del trapframe
 	popal 					// cargo los registros de proposito general	
-	popl %es				// cargo el registro %es
-	popl %ds				// cargo el registro %ds
+	popw %es				// cargo el registro %es
+	addw $2, %sp
+	popw %ds				// cargo el registro %ds
+	addw $2, %sp
 	addl $0x8, %esp			// salteo los siguientes dos elementos: trapno, errno
 	iret					// ejecuto la instruccion: retorno de trap
 spin:

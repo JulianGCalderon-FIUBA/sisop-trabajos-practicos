@@ -496,8 +496,13 @@ env_load_pgdir(struct Env *e)
 void
 env_run(struct Env *e)
 {
-	if (curenv && e->env_id != curenv->env_id)
+	if (curenv) //&& e->env_id != curenv->env_id && curenv->env_status == ENV_RUNNING){
 		curenv->env_status = ENV_RUNNABLE;
+		/*
+		// cprintf("setting curenv to runnable!!");
+	}*/
+		
+
 	curenv = e;
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;

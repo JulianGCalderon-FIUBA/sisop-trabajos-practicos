@@ -83,18 +83,26 @@ TRAPHANDLER_NOEC(trap48, T_SYSCALL)
 * push $0x0
 * pushl %ds
 * pushl %es
-*/
-/*
+*
 * movl $GD_KT, %ds
 * movl $GD_KT, %es
+*/
+/*
+* movl $GD_KT, %eax
+* movl %eax, %ds
+* movl %eax, %es
 */
 
 /*
  * Your code here for _alltraps
  */
+
 _alltraps:
-	pushl %ds
-	pushl %es
+	pushw $0x0
+	pushw %ds
+	pushw $0x0
+	pushw %es
+	
 	pushal
 	
 	pushl %esp
