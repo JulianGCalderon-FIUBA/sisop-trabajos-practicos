@@ -15,39 +15,7 @@ sched_yield(void)
 		sched_halt();
 	}
 
-
 	struct Env *idle;
-	int curenv_pos = 0;
-
-	if (curenv) {
-		curenv_pos = ENVX(curenv->env_id);
-	}
-
-
-	int i = (curenv_pos + 1) % NENV;
-
-
-	while (envs[i].env_status != ENV_RUNNABLE && i != curenv_pos) {
-		i++;
-
-		if (i == NENV) {
-			i = 0;
-		}
-	}
-
-	if (curenv && envs[i].env_status == ENV_RUNNING)
-		env_run(&envs[i]);
-
-
-	if (envs[i].env_status == ENV_RUNNABLE) {
-		env_run(&envs[i]);
-	}
-
-	// cprintf("not_to_run: %d\n", i);
-
-	// cprintf("sched_halt\n");
-	//  sched_halt never returns
-	sched_halt();
 
 	// Implement simple round-robin scheduling.
 	//
@@ -65,7 +33,27 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// Your code here
-	// Wihtout scheduler, keep runing the last environment while it exists
+
+	int curenv_pos = curenv ? ENVX(curenv->env_id) : 0;
+	int i = (curenv_pos + 1) % NENV;
+
+	while (envs[i].env_status != ENV_RUNNABLE && i != curenv_pos) {
+		i++;
+
+		if (i == NENV) {
+			i = 0;
+		}
+	}
+
+	if (curenv && envs[i].env_status == ENV_RUNNING)
+		env_run(&envs[i]);
+
+	if (envs[i].env_status == ENV_RUNNABLE) {
+		env_run(&envs[i]);
+	}
+
+	// sched_halt never returns
+	sched_halt();
 }
 
 // Halt this CPU when there is nothing to do. Wait until the

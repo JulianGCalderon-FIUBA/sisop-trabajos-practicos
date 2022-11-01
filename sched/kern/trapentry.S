@@ -73,39 +73,17 @@ TRAPHANDLER_NOEC(trap32, IRQ_OFFSET + IRQ_TIMER)
 
 TRAPHANDLER_NOEC(trap48, T_SYSCALL)
 
-/*pushl %ss
-* pushl %esp
-* pushl %eflags
-* pushl %cs
-* pushl %eip
-
-* push $0x0
-* push $0x0
-* pushl %ds
-* pushl %es
-*
-* movl $GD_KT, %ds
-* movl $GD_KT, %es
-*/
-/*
-* movl $GD_KT, %eax
-* movl %eax, %ds
-* movl %eax, %es
-*/
-
 /*
  * Your code here for _alltraps
  */
 
 _alltraps:
-	pushw $0x0
-	pushw %ds
-	pushw $0x0
-	pushw %es
+	pushl %ds				// pusheo %ds al trapframe
+	pushl %es				// pusheo %es al trapframe
+
+	pushal					// pusheo registros de proposito general al trapframe.
 	
-	pushal
+	pushl %esp				// pusheo la dirección del trapframe al stack.
 	
-	pushl %esp
-	
-	call trap
+	call trap				// llamo a la rutina trap
 
