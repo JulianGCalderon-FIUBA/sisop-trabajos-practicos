@@ -53,6 +53,10 @@ struct Env {
 	uint32_t env_runs;		// Number of times environment has run
 	int env_cpunum;			// The CPU that the env is running on
 
+	int vruntime;	// Env's virtual runtime
+	int niceness;	// Env's niceness for computing the priority
+	int priority;	// Env's priority for scheduling
+
 	// Address space
 	pde_t *env_pgdir;		// Kernel virtual address of page dir
 

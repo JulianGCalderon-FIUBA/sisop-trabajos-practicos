@@ -18,8 +18,19 @@
 struct Env *envs = NULL;           // All environments
 static struct Env *env_free_list;  // Free environment list
                                    // (linked by Env->env_link)
-
 #define ENVGENSHIFT 12  // >= LOGNENV
+
+static const int niceness_to_vruntime_coeficient[] = {
+	1, 1, 1, 2, 2,
+	3, 4, 5, 6, 8, 
+	10, 13, 16, 20, 26,
+	32, 40, 51, 64, 80, 
+	100, 124, 156, 194, 242,
+	305, 376, 476, 595, 747,
+	930, 1177, 1462, 1828, 2275, 
+	2844, 3531, 4452, 5688, 6826
+};
+
 
 // Global descriptor table.
 //
@@ -398,6 +409,15 @@ env_create(uint8_t *binary, enum EnvType type)
 
 	load_icode(env, binary);
 	env->env_type = type;
+	env->niceness = DEFAULT_NICENESS;
+
+	// add to highest priority queue
+	if(env_priority_queues[0].tail) 
+		env_priority_queues[0].tail->env_link = env;
+	else 
+		env_priority_queues[0].head = env;
+	
+	env_priority_queues[0].tail = env;
 }
 
 //
@@ -512,6 +532,10 @@ env_run(struct Env *e)
 		curenv = e;
 		curenv->env_status = ENV_RUNNING;
 		curenv->env_runs++;
+		int runtime = (curenv->niceness - 21) * (-1);
+		int weight = get_vruntime_coeficient_for_niceness(curenv->niceness);
+		curenv->vruntime += weight;
+
 		env_load_pgdir(curenv);
 	}
 
@@ -535,4 +559,8 @@ env_run(struct Env *e)
 	context_switch(&(e->env_tf));
 
 	panic("kernel can't switch"); /* mostly to placate the compiler */
+}
+
+int get_vruntime_coeficient_for_niceness(int niceness) {
+	return niceness_to_vruntime_coeficient[niceness + 19];
 }

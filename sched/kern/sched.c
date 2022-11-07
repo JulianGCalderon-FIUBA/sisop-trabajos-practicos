@@ -4,35 +4,89 @@
 #include <kern/env.h>
 #include <kern/pmap.h>
 #include <kern/monitor.h>
+#include <kern/sched.h>
 
 void sched_halt(void);
+struct Env* get_env_to_run(void);
+
+// Scheduling statistics
+size_t calls_to_scheduler = 0;
+struct executed_envs* scheduled_envs = NULL;
+
+#ifndef PRIORITY
+#define ROUNDROBIN
+#endif // PRIORITY
+
+// 4 different queues, one for each priority
+// (linked by Env->env_link)
 
 // Choose a user environment to run and run it.
+
+
+
+struct Env* pop_env_to_run(void) {
+	struct Env *to_run = NULL;
+	for (int i = 0; i < 4; i++) {
+		if (env_priority_queues[i].head != NULL) {
+			to_run = env_priority_queues[i].head;
+			to_run->priority = i;
+				
+			env_priority_queues[i].head = to_run->env_link;
+
+			if (to_run->env_link == NULL)
+				env_priority_queues[i].tail = NULL;
+
+			return to_run;
+		}
+	}
+
+	return NULL;
+}
+
+static const int niceness_to_vruntime_coeficient[] = {
+	1, 1, 1, 2, 2,
+	3, 4, 5, 6, 8, 
+	10, 13, 16, 20, 26,
+	32, 40, 51, 64, 80, 
+	100, 124, 156, 194, 242,
+	305, 376, 476, 595, 747,
+	930, 1177, 1462, 1828, 2275, 
+	2844, 3531, 4452, 5688, 6826
+};
+
+int queues_runtime_threshold[] = {256, 512, 1024};
+
+int get_vruntime_coeficient_for_niceness(int niceness) {
+	return niceness_to_vruntime_coeficient[niceness + 19];
+}
+
+void push_env_to_queue(struct Env *e) {
+	int queue_idx = e->priority;
+	if (queue_idx < NUMBER_OF_QUEUES - 1 && e->vruntime > queues_runtime_threshold[queue_idx])
+		queue_idx += 1;
+	
+	queue_idx = queue_idx < NUMBER_OF_QUEUES ? queue_idx : NUMBER_OF_QUEUES;
+	struct env_queue *queue = &env_priority_queues[queue_idx];
+	
+	if (queue->tail != NULL) {
+		queue->tail->env_link = e;
+	} else {
+		queue->head = e;
+	}
+	queue->tail = e;
+}
+ 
 void
 sched_yield(void)
 {
+	calls_to_scheduler++;
 	if (NENV == 0) {
 		sched_halt();
 	}
-
 	struct Env *idle;
 
-	// Implement simple round-robin scheduling.
-	//
-	// Search through 'envs' for an ENV_RUNNABLE environment in
-	// circular fashion starting just after the env this CPU was
-	// last running.  Switch to the first such environment found.
-	//
-	// If no envs are runnable, but the environment previously
-	// running on this CPU is still ENV_RUNNING, it's okay to
-	// choose that environment.
-	//
-	// Never choose an environment that's currently running on
-	// another CPU (env_status == ENV_RUNNING). If there are
-	// no runnable environments, simply drop through to the code
-	// below to halt the cpu.
-
-	// Your code here
+#ifdef ROUNDROBIN
+#undef PRIORITY
 
 	int curenv_pos = curenv ? ENVX(curenv->env_id) : 0;
 	int i = (curenv_pos + 1) % NENV;
@@ -48,13 +102,36 @@ sched_yield(void)
 	if (curenv && envs[i].env_status == ENV_RUNNING)
 		env_run(&envs[i]);
 
-	if (envs[i].env_status == ENV_RUNNABLE) {
+	if (envs[i].env_status == ENV_RUNNABLE)
 		env_run(&envs[i]);
-	}
 
-	// sched_halt never returns
+#endif // ROUNDROBIN
+
+#ifdef PRIORITY
+
+	struct Env *to_run = pop_env_to_run();
+	
+	if (to_run != NULL){
+		struct executed_envs executed;
+		if(scheduled_envs == NULL){
+			executed.last_executed->env = to_run;
+			scheduled_envs = executed;
+		} else{
+			scheduled_envs->last_executed->next = executed;
+			scheduled_envs->last_executed = executed;
+		}
+		executed.env = to_run;
+		executed.next = NULL;
+	
+		env_run(to_run);
+	}
+#endif // PRIORITY
+
 	sched_halt();
 }
+
+
+void sched_halt(void) __attribute__((noreturn));
 
 // Halt this CPU when there is nothing to do. Wait until the
 // timer interrupt wakes it up. This function never returns.
@@ -93,7 +170,20 @@ sched_halt(void)
 	// Once the scheduler has finishied it's work, print statistics on
 	// performance. Your code here
 
+	#ifdef PRIORITY
+
+	cprintf("SCHEDULING STATISTICS\n");
+	cprintf("Calls to scheduler: %d\n", calls_to_scheduler);
+	while(scheduled_envs->env){
+		cprintf("Executed env: %d\n", scheduled_envs->env->env_id);
+		cprintf("Number of times env was executed: %d\n", scheduled_envs->env->env_runs);
+		scheduled_envs = scheduled_envs->next;
+	}
+
+	#endif
+
 	// Reset stack pointer, enable interrupts and then halt.
+
 	asm volatile("movl $0, %%ebp\n"
 	             "movl %0, %%esp\n"
 	             "pushl $0\n"
@@ -104,4 +194,7 @@ sched_halt(void)
 	             "jmp 1b\n"
 	             :
 	             : "a"(thiscpu->cpu_ts.ts_esp0));
+
+
+	for( ;; );
 }

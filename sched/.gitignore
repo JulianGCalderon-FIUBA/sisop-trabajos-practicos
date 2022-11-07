@@ -15,3 +15,5 @@
 /sol?/
 /myapi.key
 /.suf
+/Dockerfile
+/__pycache__

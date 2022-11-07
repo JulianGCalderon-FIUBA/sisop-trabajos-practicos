@@ -83,7 +83,7 @@ _alltraps:
 
 	pushal					// pusheo registros de proposito general al trapframe.
 	
-	pushl %esp				// pusheo la dirección del trapframe al stack.
+	pushl %esp				// pusheo la direccion del trapframe al stack.
 	
 	call trap				// llamo a la rutina trap
 

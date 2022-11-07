@@ -5,6 +5,7 @@
 
 #include <inc/env.h>
 #include <kern/cpu.h>
+#include <kern/sched.h>
 
 extern struct Env *envs;		// All environments
 #define curenv (thiscpu->cpu_env)		// Current environment

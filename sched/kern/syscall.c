@@ -180,7 +180,12 @@ sys_env_set_status(envid_t envid, int status)
 	if ((r = envid2env(envid, &env, 1)))
 		return r;
 
+
 	env->env_status = status;
+	if (status == ENV_RUNNABLE) {
+		push_env_to_queue(env);
+	}
+
 	return 0;
 	//panic("sys_env_set_status not implemented");
 }
@@ -427,6 +432,33 @@ sys_ipc_recv(void *dstva)
 	return 0;
 }
 
+// This function returns an Env's niceness.
+// Returns -1 on error.
+static int sys_getenvniceness(void *env) {
+	if (env == NULL)
+		return -1;
+
+	struct Env *e = (struct Env *)env;
+	return e->niceness;
+}
+
+// This function modifies an Env's niceness.
+// An Env cannot lower it's own niceness.
+static int sys_env_set_niceness(void* env, int new_niceness) {
+	if (env == NULL)
+		return -1;
+
+	struct Env *e = (struct Env *)env;
+	if(e == curenv && e->niceness > new_niceness)
+		return -1;
+	if (new_niceness < BEST_NICENESS || new_niceness > WORST_NICENESS)
+		return -1;
+
+	e->niceness = new_niceness;
+
+	return 0;
+}
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -462,6 +494,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_env_set_pgfault_upcall(a1, (void*) a2);
 	case SYS_yield:
 		sys_yield(); // No return
+	case SYS_getenvniceness:
+		return sys_getenvniceness((void*)a1);
+	case SYS_env_set_niceness:
+		return sys_env_set_niceness((void*)a1, a2);
 	default:
 		return -E_INVAL;
 	}
