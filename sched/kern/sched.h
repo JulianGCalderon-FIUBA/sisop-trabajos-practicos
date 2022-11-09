@@ -16,9 +16,7 @@ struct env_queue {
 #define WORST_NICENESS 20
 
 #define NUMBER_OF_QUEUES 4
-struct env_queue env_priority_queues[NUMBER_OF_QUEUES] = {0};
-
-int get_vruntime_coeficient_for_niceness(int niceness);
+struct env_queue env_priority_queues[NUMBER_OF_QUEUES];
 
 struct executed_envs {
     struct executed_envs* last_executed;

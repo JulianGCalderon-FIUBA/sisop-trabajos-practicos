@@ -31,6 +31,9 @@ static const int niceness_to_vruntime_coeficient[] = {
 	2844, 3531, 4452, 5688, 6826
 };
 
+int get_vruntime_coeficient_for_niceness(int niceness) {
+	return niceness_to_vruntime_coeficient[niceness + 19];
+}
 
 // Global descriptor table.
 //
@@ -559,8 +562,4 @@ env_run(struct Env *e)
 	context_switch(&(e->env_tf));
 
 	panic("kernel can't switch"); /* mostly to placate the compiler */
-}
-
-int get_vruntime_coeficient_for_niceness(int niceness) {
-	return niceness_to_vruntime_coeficient[niceness + 19];
 }

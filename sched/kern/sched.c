@@ -19,11 +19,12 @@ struct executed_envs* scheduled_envs = NULL;
 
 // 4 different queues, one for each priority
 // (linked by Env->env_link)
+for(int i = 0; i < NUMBER_OF_QUEUE; i++)
+	env_priority_queues[i] = 0;
+
+int queues_runtime_threshold[] = {256, 512, 1024};
 
 // Choose a user environment to run and run it.
-
-
-
 struct Env* pop_env_to_run(void) {
 	struct Env *to_run = NULL;
 	for (int i = 0; i < 4; i++) {
@@ -41,23 +42,6 @@ struct Env* pop_env_to_run(void) {
 	}
 
 	return NULL;
-}
-
-static const int niceness_to_vruntime_coeficient[] = {
-	1, 1, 1, 2, 2,
-	3, 4, 5, 6, 8, 
-	10, 13, 16, 20, 26,
-	32, 40, 51, 64, 80, 
-	100, 124, 156, 194, 242,
-	305, 376, 476, 595, 747,
-	930, 1177, 1462, 1828, 2275, 
-	2844, 3531, 4452, 5688, 6826
-};
-
-int queues_runtime_threshold[] = {256, 512, 1024};
-
-int get_vruntime_coeficient_for_niceness(int niceness) {
-	return niceness_to_vruntime_coeficient[niceness + 19];
 }
 
 void push_env_to_queue(struct Env *e) {
