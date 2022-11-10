@@ -13,6 +13,7 @@ struct Env *get_env_to_run(void);
 size_t calls_to_scheduler = 0;
 struct executed_envs *scheduled_envs = NULL;
 
+#undef ROUNDROBIN
 #ifndef PRIORITY
 #define ROUNDROBIN
 #endif  // !PRIORITY
@@ -74,7 +75,6 @@ sched_yield(void)
 	struct Env *idle;
 
 #ifdef ROUNDROBIN
-#undef PRIORITY
 
 	int curenv_pos = curenv ? ENVX(curenv->env_id) : 0;
 	int i = (curenv_pos + 1) % NENV;
