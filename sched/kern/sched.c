@@ -15,9 +15,7 @@ struct executed_envs *scheduled_envs = NULL;
 
 #ifndef PRIORITY
 #define ROUNDROBIN
-#endif  // PRIORITY
-#undef ROUNDOBIN
-#define PRIORITY
+#endif  // !PRIORITY
 
 // 4 different queues, one for each priority
 // (linked by Env->env_link)
