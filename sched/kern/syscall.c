@@ -171,7 +171,6 @@ sys_env_set_status(envid_t envid, int status)
 	// You should set envid2env's third argument to 1, which will
 	// check whether the current environment has permission to set
 	// envid's status.
-
 	if ((status != ENV_RUNNABLE) && (status != ENV_NOT_RUNNABLE))
 		return -E_INVAL;
 
@@ -180,11 +179,10 @@ sys_env_set_status(envid_t envid, int status)
 	if ((r = envid2env(envid, &env, 1)))
 		return r;
 
+	if (status == ENV_RUNNABLE && env->env_status != ENV_RUNNABLE)
+		push_env_to_queue(env);
 
 	env->env_status = status;
-	if (status == ENV_RUNNABLE) {
-		push_env_to_queue(env);
-	}
 
 	return 0;
 	// panic("sys_env_set_status not implemented");
@@ -405,6 +403,7 @@ bail:
 	dstenv->env_ipc_value = value;
 	dstenv->env_tf.tf_regs.reg_eax = 0;
 	dstenv->env_status = ENV_RUNNABLE;
+	push_env_to_queue(dstenv);
 	return 0;
 }
 

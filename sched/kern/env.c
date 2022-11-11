@@ -409,18 +409,13 @@ env_create(uint8_t *binary, enum EnvType type)
 	int err = env_alloc(&env, 0x0);
 	if (err < 0)
 		panic("env_create: %e\n", err);
-
+	
 	load_icode(env, binary);
 	env->env_type = type;
 	env->niceness = DEFAULT_NICENESS;
-
-	// add to highest priority queue
-	if(env_priority_queues[0].tail) 
-		env_priority_queues[0].tail->env_link = env;
-	else 
-		env_priority_queues[0].head = env;
-	
-	env_priority_queues[0].tail = env;
+	env->priority = 0;
+	env->vruntime = 0;
+	push_env_to_queue(env);
 }
 
 //
@@ -527,10 +522,11 @@ env_run(struct Env *e)
 	//	   3. Set its status to ENV_RUNNING,
 	//	   4. Update its 'env_runs' counter,
 	//	   5. Use env_load_pgdir() to switch to its address space.
-
 	if (e != curenv) {
-		if (curenv && curenv->env_status == ENV_RUNNING)
+		if (curenv && curenv->env_status == ENV_RUNNING) {
 			curenv->env_status = ENV_RUNNABLE;
+			push_env_to_queue(curenv);
+		}
 
 		curenv = e;
 		curenv->env_status = ENV_RUNNING;
@@ -538,10 +534,8 @@ env_run(struct Env *e)
 		int runtime = (curenv->niceness - 21) * (-1);
 		int weight = get_vruntime_coeficient_for_niceness(curenv->niceness);
 		curenv->vruntime += weight;
-
 		env_load_pgdir(curenv);
 	}
-
 	// Hint: This function loads the new environment's state from
 	//	e->env_tf.  Go back through the code you wrote above
 	//	and make sure you have set the relevant parts of

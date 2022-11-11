@@ -15,7 +15,7 @@ struct env_queue {
 #define BEST_NICENESS -19
 #define WORST_NICENESS 20
 
-#define NUMBER_OF_QUEUES 4
+#define NUMBER_OF_QUEUES 1
 extern struct env_queue env_priority_queues[NUMBER_OF_QUEUES];
 
 struct executed_envs {

@@ -13,14 +13,10 @@ struct Env *get_env_to_run(void);
 size_t calls_to_scheduler = 0;
 struct executed_envs *scheduled_envs = NULL;
 
-#undef ROUNDROBIN
-#ifndef PRIORITY
-#define ROUNDROBIN
-#endif  // !PRIORITY
 
 // 4 different queues, one for each priority
 // (linked by Env->env_link)
-struct env_queue env_priority_queues[NUMBER_OF_QUEUES];
+struct env_queue env_priority_queues[NUMBER_OF_QUEUES] = {0};
 
 int queues_runtime_threshold[] = { 256, 512, 1024 };
 
@@ -30,7 +26,7 @@ pop_env_to_run(void)
 {
 	struct Env *to_run = NULL;
 	// if using RoundRobin, there is only one queue
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < NUMBER_OF_QUEUES; i++) {
 		if (env_priority_queues[i].head != NULL) {
 			to_run = env_priority_queues[i].head;
 			to_run->priority = i;
@@ -39,23 +35,23 @@ pop_env_to_run(void)
 
 			if (to_run->env_link == NULL)
 				env_priority_queues[i].tail = NULL;
-
 			return to_run;
 		}
 	}
-
+	if (curenv && (curenv->env_status == ENV_RUNNABLE || curenv->env_status == ENV_RUNNING))
+		return curenv;
 	return NULL;
 }
 
 void
 push_env_to_queue(struct Env *e)
 {
+	e->env_link = NULL;
 	int queue_idx = e->priority;
-	if (queue_idx < NUMBER_OF_QUEUES - 1 &&
-	    e->vruntime > queues_runtime_threshold[queue_idx])
+	if (queue_idx < NUMBER_OF_QUEUES - 1 && e->vruntime > queues_runtime_threshold[queue_idx])
 		queue_idx += 1;
 
-	queue_idx = queue_idx < NUMBER_OF_QUEUES ? queue_idx : NUMBER_OF_QUEUES;
+	queue_idx = queue_idx < NUMBER_OF_QUEUES ? queue_idx : NUMBER_OF_QUEUES - 1;
 	struct env_queue *queue = &env_priority_queues[queue_idx];
 
 	if (queue->tail != NULL) {
@@ -83,6 +79,7 @@ void add_env_to_metric(struct Env *to_run) {
 	executed.next = NULL;
 }
 */
+
 /*
  * Find the next runnable env and run it.
  * This function never returns.
@@ -95,37 +92,12 @@ sched_yield(void)
 		sched_halt();
 	}
 	struct Env *idle;
-
-#ifdef ROUNDROBIN
-
-	int curenv_pos = curenv ? ENVX(curenv->env_id) : 0;
-	int i = (curenv_pos + 1) % NENV;
-
-	while (envs[i].env_status != ENV_RUNNABLE && i != curenv_pos) {
-		i++;
-
-		if (i == NENV) {
-			i = 0;
-		}
-	}
-
-	if (curenv && envs[i].env_status == ENV_RUNNING)
-		env_run(&envs[i]);
-
-	if (envs[i].env_status == ENV_RUNNABLE)
-		env_run(&envs[i]);
-
-#endif  // ROUNDROBIN
-
-#ifdef PRIORITY
-
 	struct Env *to_run = pop_env_to_run();
 
 	if (to_run != NULL) {
 		// add_env_to_metric(to_run);
 		env_run(to_run);
 	}
-#endif  // PRIORITY
 
 	sched_halt();
 }
@@ -196,7 +168,6 @@ sched_halt(void)
 	             "jmp 1b\n"
 	             :
 	             : "a"(thiscpu->cpu_ts.ts_esp0));
-
 
 	for (;;)
 		;
