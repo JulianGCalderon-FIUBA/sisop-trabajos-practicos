@@ -29,6 +29,7 @@ struct Env *
 pop_env_to_run(void)
 {
 	struct Env *to_run = NULL;
+	// if using RoundRobin, there is only one queue
 	for (int i = 0; i < 4; i++) {
 		if (env_priority_queues[i].head != NULL) {
 			to_run = env_priority_queues[i].head;
@@ -65,6 +66,27 @@ push_env_to_queue(struct Env *e)
 	queue->tail = e;
 }
 
+/*
+ * Adds the env to the end of the list indicating order of env execution
+*/
+/*
+void add_env_to_metric(struct Env *to_run) {
+	struct executed_envs executed;
+	if (scheduled_envs == NULL) {
+		scheduled_envs = &executed;
+		scheduled_envs->last_executed = &executed;
+	} else {
+		scheduled_envs->last_executed->next = &executed;
+		scheduled_envs->last_executed = &executed;
+	}
+	executed.env = to_run;
+	executed.next = NULL;
+}
+*/
+/*
+ * Find the next runnable env and run it.
+ * This function never returns.
+ */
 void
 sched_yield(void)
 {
@@ -100,17 +122,7 @@ sched_yield(void)
 	struct Env *to_run = pop_env_to_run();
 
 	if (to_run != NULL) {
-		struct executed_envs executed;
-		if (scheduled_envs == NULL) {
-			executed.last_executed->env = to_run;
-			scheduled_envs = executed;
-		} else {
-			scheduled_envs->last_executed->next = executed;
-			scheduled_envs->last_executed = executed;
-		}
-		executed.env = to_run;
-		executed.next = NULL;
-
+		// add_env_to_metric(to_run);
 		env_run(to_run);
 	}
 #endif  // PRIORITY
@@ -118,6 +130,19 @@ sched_yield(void)
 	sched_halt();
 }
 
+/*
+// displays scheduler statistics
+void print_statistics(void) {
+	cprintf("SCHEDULING STATISTICS\n");
+	cprintf("Calls to scheduler: %d\n", calls_to_scheduler);
+	while (scheduled_envs->env) {
+		cprintf("Executed env: %d\n", scheduled_envs->env->env_id);
+		cprintf("Number of times env was executed: %d\n",
+		        scheduled_envs->env->env_runs);
+		scheduled_envs = scheduled_envs->next;
+	}
+}
+*/
 
 void sched_halt(void) __attribute__((noreturn));
 
@@ -157,19 +182,7 @@ sched_halt(void)
 
 	// Once the scheduler has finishied it's work, print statistics on
 	// performance. Your code here
-
-#ifdef PRIORITY
-
-	cprintf("SCHEDULING STATISTICS\n");
-	cprintf("Calls to scheduler: %d\n", calls_to_scheduler);
-	while (scheduled_envs->env) {
-		cprintf("Executed env: %d\n", scheduled_envs->env->env_id);
-		cprintf("Number of times env was executed: %d\n",
-		        scheduled_envs->env->env_runs);
-		scheduled_envs = scheduled_envs->next;
-	}
-
-#endif
+	// print_statistics();
 
 	// Reset stack pointer, enable interrupts and then halt.
 
