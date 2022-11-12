@@ -6,12 +6,17 @@
 #include <kern/monitor.h>
 #include <kern/sched.h>
 
+
+#define MAX_SCHEDULED_ENVS 4*NENV
+
 void sched_halt(void);
 struct Env *get_env_to_run(void);
 
 // Scheduling statistics
 size_t calls_to_scheduler = 0;
-struct executed_envs *scheduled_envs = NULL;
+envid_t scheduled_envs[MAX_SCHEDULED_ENVS]={0};
+size_t env_executions[NENV] = {0};
+size_t times_scheduled_envs = 0;
 
 
 // 4 different queues, one for each priority
@@ -65,20 +70,19 @@ push_env_to_queue(struct Env *e)
 /*
  * Adds the env to the end of the list indicating order of env execution
 */
-/*
+
 void add_env_to_metric(struct Env *to_run) {
-	struct executed_envs executed;
-	if (scheduled_envs == NULL) {
-		scheduled_envs = &executed;
-		scheduled_envs->last_executed = &executed;
-	} else {
-		scheduled_envs->last_executed->next = &executed;
-		scheduled_envs->last_executed = &executed;
-	}
-	executed.env = to_run;
-	executed.next = NULL;
+	scheduled_envs[times_scheduled_envs] = to_run->env_id;
+	times_scheduled_envs ++;
 }
-*/
+
+void print_statistics(){
+	for(int i = 0; i < times_scheduled_envs; i++){
+		env_executions[ENVX(scheduled_envs[i])]++;
+		cprintf("Proccess executed:%d\namount of executions: %d\n", scheduled_envs[i]);
+		cprintf("Amount of executions: %d\n\n", env_executions[ENVX(scheduled_envs[i])]);
+	}
+}
 
 /*
  * Find the next runnable env and run it.
@@ -95,26 +99,13 @@ sched_yield(void)
 	struct Env *to_run = pop_env_to_run();
 
 	if (to_run != NULL) {
-		// add_env_to_metric(to_run);
+		add_env_to_metric(to_run);
 		env_run(to_run);
 	}
 
 	sched_halt();
 }
 
-/*
-// displays scheduler statistics
-void print_statistics(void) {
-	cprintf("SCHEDULING STATISTICS\n");
-	cprintf("Calls to scheduler: %d\n", calls_to_scheduler);
-	while (scheduled_envs->env) {
-		cprintf("Executed env: %d\n", scheduled_envs->env->env_id);
-		cprintf("Number of times env was executed: %d\n",
-		        scheduled_envs->env->env_runs);
-		scheduled_envs = scheduled_envs->next;
-	}
-}
-*/
 
 void sched_halt(void) __attribute__((noreturn));
 
@@ -154,7 +145,7 @@ sched_halt(void)
 
 	// Once the scheduler has finishied it's work, print statistics on
 	// performance. Your code here
-	// print_statistics();
+	print_statistics();
 
 	// Reset stack pointer, enable interrupts and then halt.
 

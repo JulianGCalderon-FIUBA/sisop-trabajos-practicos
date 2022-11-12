@@ -18,11 +18,7 @@ struct env_queue {
 #define NUMBER_OF_QUEUES 1
 extern struct env_queue env_priority_queues[NUMBER_OF_QUEUES];
 
-struct executed_envs {
-	struct executed_envs *last_executed;
-	struct executed_envs *next;
-	struct Env *env;
-};
+
 
 // This function does not return.
 void sched_yield(void) __attribute__((noreturn));
