@@ -79,7 +79,7 @@ void add_env_to_metric(struct Env *to_run) {
 void print_statistics(){
 	for(int i = 0; i < times_scheduled_envs; i++){
 		env_executions[ENVX(scheduled_envs[i])]++;
-		cprintf("Proccess executed:%d\namount of executions: %d\n", scheduled_envs[i]);
+		cprintf("Proccess executed:%d\n", scheduled_envs[i]);
 		cprintf("Amount of executions: %d\n\n", env_executions[ENVX(scheduled_envs[i])]);
 	}
 }
