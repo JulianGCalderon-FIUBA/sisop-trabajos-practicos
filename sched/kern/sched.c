@@ -8,7 +8,6 @@
 #include <kern/monitor.h>
 // #include <kern/sched.h>
 
-#define VERBOSE
 #define MAX_SCHEDULED_ENVS 4 * NENV
 
 // the last queue doesn't have a threshold, since envs in said queue can't go any lower
@@ -223,7 +222,7 @@ sched_yield(void)
 	runnable_env->vruntime +=
 	        get_vruntime_weight_for_niceness(runnable_env->niceness);
 
-	// add_env_to_metric(runnable_env);
+	add_env_to_metric(runnable_env);
 	++envs_ran_since_boost;
 	// cprintf("[running %d]\n", runnable_env->env_id);
 	env_run(runnable_env);
