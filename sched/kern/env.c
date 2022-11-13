@@ -19,7 +19,7 @@
 struct Env *envs = NULL;           // All environments
 static struct Env *env_free_list;  // Free environment list
                                    // (linked by Env->env_link)
-#define ENVGENSHIFT 12  // >= LOGNENV
+#define ENVGENSHIFT 12             // >= LOGNENV
 
 // Global descriptor table.
 //
@@ -509,18 +509,13 @@ env_run(struct Env *e)
 	//	   4. Update its 'env_runs' counter,
 	//	   5. Use env_load_pgdir() to switch to its address space.
 	if (e != curenv) {
-		if (curenv && curenv->env_status == ENV_RUNNING) {
-			curenv->env_status = ENV_RUNNABLE;
-			push_env_to_queue(curenv);
-		}
-
 		curenv = e;
-		curenv->env_status = ENV_RUNNING;
-		curenv->env_runs++;
-		int weight = get_vruntime_weight_for_niceness(curenv->niceness);
-		curenv->vruntime += weight;
 		env_load_pgdir(curenv);
 	}
+
+	curenv->env_status = ENV_RUNNING;
+	curenv->env_runs++;
+
 	// Hint: This function loads the new environment's state from
 	//	e->env_tf.  Go back through the code you wrote above
 	//	and make sure you have set the relevant parts of

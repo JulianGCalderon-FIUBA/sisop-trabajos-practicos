@@ -13,9 +13,10 @@
 
 // the last queue doesn't have a threshold, since envs in said queue can't go any lower
 int queues_vruntime_threshold[NUMBER_OF_QUEUES - 1] = { 64, 256, 1024 };
-// the thresholds should be defined according to the values in niceness_to_vruntime_weight (kern/env.c)
-// vruntime is set to 0 every time an env changes queue (during boosting or due to env reaching threshold),
-// must be taken into account to set the values in queues_vruntime_threshold
+// the thresholds should be defined according to the values in
+// niceness_to_vruntime_weight (kern/env.c) vruntime is set to 0 every time an
+// env changes queue (during boosting or due to env reaching threshold), must be
+// taken into account to set the values in queues_vruntime_threshold
 
 uint32_t envs_ran_since_boost = 0;
 
@@ -26,7 +27,9 @@ static const int niceness_to_vruntime_weight[] = {
 	930, 1177, 1462, 1828, 2275, 2844, 3531, 4452, 5688, 6826
 };
 
-int get_vruntime_weight_for_niceness(int niceness) {
+int
+get_vruntime_weight_for_niceness(int niceness)
+{
 	return niceness_to_vruntime_weight[niceness + 19];
 }
 
@@ -52,7 +55,7 @@ uint32_t calls_to_sched_boosting = 0;
  *  ################ QUEUES ################
  */
 
-// Chooses next env to run from corresponding queue.
+
 struct Env *
 pop_env_to_run(void)
 {
@@ -67,14 +70,16 @@ pop_env_to_run(void)
 
 			if (to_run->env_link == NULL)
 				env_priority_queues[i].tail = NULL;
+
+			cprintf("popping %d from %d\n", to_run->env_id, i);
 			return to_run;
 		}
 	}
-	if (curenv && (curenv->env_status == ENV_RUNNABLE ||
-	               curenv->env_status == ENV_RUNNING))
-		return curenv;
+
 	return NULL;
 }
+
+
 // Push env to corresponding queue.
 // If env has run more than the threshold for that queue it get's demoted to lower queue.
 void
@@ -85,14 +90,15 @@ push_env_to_queue(struct Env *e)
 		// a boosting took place, reset the env's vruntime and start from scratch
 		e->priority = 0;
 		e->last_sched_boost_known = calls_to_sched_boosting;
-		// it was run 1 time since boost, and vruntime = weight * times_ran = vruntime_coeficient_for_niceness * 1
-		curenv->vruntime = get_vruntime_weight_for_niceness(e->niceness); 
+		// it was run 1 time since boost, and vruntime = weight *
+		// times_ran = vruntime_coeficient_for_niceness * 1
+		curenv->vruntime = get_vruntime_weight_for_niceness(e->niceness);
 	}
 
 	int queue_idx = e->priority;
 	// if vruntime is higher than threshold, move env to the next queue
 	if (queue_idx < NUMBER_OF_QUEUES - 1 &&
-		e->vruntime > queues_vruntime_threshold[queue_idx]) {
+	    e->vruntime > queues_vruntime_threshold[queue_idx]) {
 		e->vruntime = 0;
 		queue_idx += 1;
 	}
@@ -104,6 +110,8 @@ push_env_to_queue(struct Env *e)
 		queue->head = e;
 	}
 	queue->tail = e;
+
+	cprintf("pushing %d to %d\n", e->env_id, queue_idx);
 }
 
 // Boost all envs to first queue.
@@ -141,6 +149,8 @@ sched_boosting(void)
 
 	env_priority_queues[0].head = first_env;
 	env_priority_queues[0].tail = last_env;
+
+	cprintf("boosting\n");
 }
 
 /*
@@ -153,7 +163,6 @@ sched_boosting(void)
 void
 add_env_to_metric(struct Env *to_run)
 {
-
 #ifdef STATS
 	scheduled_envs[times_scheduled_envs] = to_run->env_id;
 	times_scheduled_envs++;
@@ -188,6 +197,12 @@ sched_yield(void)
 	if (NENV == 0) {
 		sched_halt();
 	}
+
+	if (curenv && curenv->env_status == ENV_RUNNING) {
+		curenv->env_status = ENV_RUNNABLE;
+		push_env_to_queue(curenv);
+	}
+
 	if (envs_ran_since_boost >= RUNS_PER_BOOST) {
 		sched_boosting();
 		envs_ran_since_boost = 0;
@@ -196,7 +211,10 @@ sched_yield(void)
 	struct Env *runnable_env = pop_env_to_run();
 
 	if (runnable_env == NULL)
-		sched_halt();	
+		sched_halt();
+
+	runnable_env->vruntime +=
+	        get_vruntime_weight_for_niceness(runnable_env->niceness);
 
 	// add_env_to_metric(runnable_env);
 	++envs_ran_since_boost;

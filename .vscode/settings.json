@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "printfmt.h": "c",
-        "malloc_test.h": "c"
+        "malloc_test.h": "c",
+        "spinlock.h": "c"
     }
 }

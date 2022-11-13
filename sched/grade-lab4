@@ -14,6 +14,8 @@ def E(s, trim=False):
     return re.sub(r"\$E([0-9]+)",
                   lambda m: tmpl % (0x1000 + int(m.group(1))-1), s)
 
+"""
+
 @test(1)
 def test_helloinit():
     r.user_test("hello")
@@ -236,5 +238,17 @@ def test_faultevilhandler():
             E(".$E1. free env $E1"))
 
 end_part("5")
+
+"""
+
+@test(1)
+def test_priority():
+    r.user_test("queues",
+                make_args=["CPUS=1"], timeout=60)
+    r.match(
+            E("P1"),
+            E("P1"),)
+
+end_part("PRIORITY TESTING")
 
 run_tests()
