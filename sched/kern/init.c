@@ -68,7 +68,8 @@ i386_init(void)
 		ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-	ENV_CREATE(user_queues, ENV_TYPE_USER);
+	ENV_CREATE(user_sched_queues, ENV_TYPE_USER);
+	// ENV_CREATE(user_sched_roundrobin, ENV_TYPE_USER);
 #endif  // TEST*
 
 	// Eliminar esta llamada una vez completada la parte 1

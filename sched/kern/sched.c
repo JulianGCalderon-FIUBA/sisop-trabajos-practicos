@@ -71,7 +71,8 @@ pop_env_to_run(void)
 			if (to_run->env_link == NULL)
 				env_priority_queues[i].tail = NULL;
 
-			cprintf("popping %d from %d\n", to_run->env_id, i);
+			// cprintf("[popping %d from %d]\n", to_run->env_id, i);
+
 			return to_run;
 		}
 	}
@@ -111,7 +112,7 @@ push_env_to_queue(struct Env *e)
 	}
 	queue->tail = e;
 
-	cprintf("pushing %d to %d\n", e->env_id, queue_idx);
+	// cprintf("[pushing %d to %d]\n", e->env_id, queue_idx);
 }
 
 // Boost all envs to first queue.
