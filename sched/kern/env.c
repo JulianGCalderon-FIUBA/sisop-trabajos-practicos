@@ -21,6 +21,9 @@ static struct Env *env_free_list;  // Free environment list
                                    // (linked by Env->env_link)
 #define ENVGENSHIFT 12  // >= LOGNENV
 
+// values taking from Linux's Perfectely Fair Scheduler, 
+// only that this scheduler uses constant timeslices and
+// doesn't care wether the envs use their timeslices or not
 static const int niceness_to_vruntime_coeficient[] = {
 	1, 1, 1, 2, 2,
 	3, 4, 5, 6, 8, 
@@ -532,7 +535,6 @@ env_run(struct Env *e)
 		curenv = e;
 		curenv->env_status = ENV_RUNNING;
 		curenv->env_runs++;
-		int runtime = (curenv->niceness - 21) * (-1);
 		int weight = get_vruntime_coeficient_for_niceness(curenv->niceness);
 		curenv->vruntime += weight;
 		env_load_pgdir(curenv);

@@ -11,7 +11,20 @@
 
 #define MAX_SCHEDULED_ENVS 4*NENV
 
-int queues_runtime_threshold[NUMBER_OF_QUEUES - 1] = { 8, 12, 16 };
+// the last queue doesn't have a threshold, since envs in said queue can't go any lower
+int queues_vruntime_threshold[NUMBER_OF_QUEUES - 1] = { 64, 256, 1024 };
+// the thresholds should be defined according to the values in niceness_to_vruntime_coeficient (kern/env.c)
+
+static const int niceness_to_vruntime_coeficient[] = {
+	1, 1, 1, 2, 2,
+	3, 4, 5, 6, 8, 
+	10, 13, 16, 20, 26,
+	32, 40, 51, 64, 80, 
+	100, 124, 156, 194, 242,
+	305, 376, 476, 595, 747,
+	930, 1177, 1462, 1828, 2275, 
+	2844, 3531, 4452, 5688, 6826
+};
 
 void sched_halt(void);
 
@@ -28,7 +41,7 @@ struct env_queue env_priority_queues[NUMBER_OF_QUEUES] = {0};
 // Each env remembers the value of calls_to_sched_boosting during its last execution
 // it it differs from the current calls_to_sched_boosting, it means that a boosting took place.
 // If a boosting took place, the amount of times the env was executed should be forgotten (set to 0)
-size_t calls_to_sched_boosting = 0;
+uint32_t calls_to_sched_boosting = 0;
 
 /*
  *  ################ QUEUES ################
@@ -62,7 +75,7 @@ push_env_to_queue(struct Env *e)
 {
 	e->env_link = NULL;
 	int queue_idx = e->priority;
-	if (queue_idx < NUMBER_OF_QUEUES - 1 && e->vruntime > queues_runtime_threshold[queue_idx])
+	if (queue_idx < NUMBER_OF_QUEUES - 1 && e->env_runs > queues_vruntime_threshold[queue_idx])
 		queue_idx += 1;
 
 	queue_idx = queue_idx < NUMBER_OF_QUEUES ? queue_idx : NUMBER_OF_QUEUES - 1;
@@ -150,7 +163,12 @@ sched_yield(void)
 	struct Env *to_run = pop_env_to_run();
 
 	if (to_run != NULL) {
+		if (to_run->sched_boosts < calls_to_sched_boosting) {
+			// a boosting took place, reset the env's vruntime and start from scratch
+			to_run->vruntime = 0;
+		}
 		// add_env_to_metric(to_run);
+		to_run->sched_boosts = calls_to_sched_boosting;
 		env_run(to_run);
 	}
 
