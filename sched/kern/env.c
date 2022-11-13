@@ -395,7 +395,7 @@ env_create(uint8_t *binary, enum EnvType type)
 	int err = env_alloc(&env, 0x0);
 	if (err < 0)
 		panic("env_create: %e\n", err);
-	
+
 	load_icode(env, binary);
 	env->env_type = type;
 	env->niceness = DEFAULT_NICENESS;
