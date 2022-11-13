@@ -9,7 +9,7 @@ El scheduler que implementamos comparte ciertas similitudes con **MLFQ**. MLFQ c
   4. Si un proceso ocupó todo su timeslice, de forma continua o no, se le reduce la prioridad en uno, bajándolo a la siguiente cola.
   5. Cada un tiempo S se hace un *boosting*, y se sube la prioridad a la máxima, haciendo que todos los procesos estén en la primera cola.
 
-Para realizar nuestra implementación, agregamos en el struct *Env* tres campos: *niceness*, *priority*, y *vruntime*. El *niceness* es un valor que puede ir de -19 a 20, siendo -19 el mejor valor, y se inicializa en un valor default de 1. Luego, cada env puede modificar su *niceness* o el de sus procesos hijos a través de la syscall `sys_env_set_niceness`. Cabe aclarar que un proceso solo puede incrementar su *niceness* (disminuyendo su prioridad), ya que de otra forma podría darse siempre la mejor prioridad y no dejar que otros se ejecuten. El campo de *priority* indica en qué cola de prioridad se ejecutó por última vez el env, para saber en una próxima corrida en qué cola debería estar (ya sea la misma o una menos). Nuestra implementación consiste de 4 colas.
+Para realizar nuestra implementación, agregamos en el struct *Env* tres campos: *niceness*, *priority*, y *vruntime*. El *niceness* es un valor que puede ir de -19 a 20, siendo -19 el mejor valor, y se inicializa en un valor default de 1. Luego, cada env puede modificar su *niceness* o el de sus procesos hijos a través de la syscall `sys_env_set_niceness` y obtener el *niceness* de un proceso con la syscall `sys_getenvniceness`. Cabe aclarar que un proceso solo puede incrementar su *niceness* (disminuyendo su prioridad), ya que de otra forma podría darse siempre la mejor prioridad y no dejar que otros se ejecuten. El campo de *priority* indica en qué cola de prioridad se ejecutó por última vez el env, para saber en una próxima corrida en qué cola debería estar (ya sea la misma o una menos). Nuestra implementación consiste de 4 colas.
 
 Por otro lado, el *vruntime* se utiliza para saber cuándo un env debería disminuir de cola. Todas las colas tienen un mismo timeslice, y no contabilizamos cuánto tiempo se ejecutó un proceso, si no que en cada corrida se aumenta el *vruntime* realizando un cálculo entre el *niceness* y el peso correspondiente. Cada cola tiene un límite de *vruntime* (salvo la última, ya que cuando un proceso está ahí no puede ir a otra cola), que cuando un env lo supera significa que debe modificarse su prioridad y moverse a la siguiente cola. El cálculo que se realiza para el *vruntime* es de la siguiente forma: 
 
@@ -18,6 +18,8 @@ Por otro lado, el *vruntime* se utiliza para saber cuándo un env debería dismi
 siendo el weight un valor que varía según el *niceness* del proceso. El *vruntime* se setea en 0 cada vez que un proceso es movido de cola, ya sea porque se le redujo la prioridad o porque hubo *boosting*.
 
 El *boosting*, en vez de realizarse en un tiempo S, se realiza cada 64 ejecuciones. Cada env tiene guardado cuántas corridas hubo cuando se lo ejecutó, por lo que si en una próxima corrida se superó el número de ejecuciones eso indica que debe haber un *boost*. El *boost* mueve todos los procesos a la primera cola, y les cambia la prioridad a la más baja. Esto evita que haya starvation y que procesos con peor *niceness* no se ejecuten nunca. 
+
+Por otra parte, en el caso donde se realiza `fork` 
 
 ## Estado de los registros:
 
