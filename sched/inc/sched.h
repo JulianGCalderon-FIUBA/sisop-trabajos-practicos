@@ -5,8 +5,8 @@
 #define BEST_NICENESS -19
 #define WORST_NICENESS 20
 
-// minimum amount of env runs that must be performed in-between boostings
-#define MIN_RUNS_PER_BOOST 64
+// amount of env runs that must be performed in-between boostings
+#define RUNS_PER_BOOST 64
 
 // Set NUMBER_OF_QUEUES to 1 for Round-Robin
 #define NUMBER_OF_QUEUES 4

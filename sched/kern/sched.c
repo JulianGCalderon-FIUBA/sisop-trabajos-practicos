@@ -13,9 +13,16 @@
 
 // the last queue doesn't have a threshold, since envs in said queue can't go any lower
 int queues_vruntime_threshold[NUMBER_OF_QUEUES - 1] = { 64, 256, 1024 };
-// the thresholds should be defined according to the values in niceness_to_vruntime_coeficient (kern/env.c)
+// the thresholds should be defined according to the values in niceness_to_vruntime_weight (kern/env.c)
+// vruntime is set to 0 every time an env changes queue (during boosting or due to env reaching threshold),
+// must be taken into account to set the values in queues_vruntime_threshold
 
-static const int niceness_to_vruntime_coeficient[] = {
+uint32_t envs_ran_since_boost = 0;
+
+// values taking from Linux's Perfectely Fair Scheduler, 
+// only that this scheduler uses constant timeslices and
+// doesn't care wether the envs use their timeslices or not
+static const int niceness_to_vruntime_weight[] = {
 	1, 1, 1, 2, 2,
 	3, 4, 5, 6, 8, 
 	10, 13, 16, 20, 26,
@@ -25,6 +32,10 @@ static const int niceness_to_vruntime_coeficient[] = {
 	930, 1177, 1462, 1828, 2275, 
 	2844, 3531, 4452, 5688, 6826
 };
+
+int get_vruntime_weight_for_niceness(int niceness) {
+	return niceness_to_vruntime_weight[niceness + 19];
+}
 
 void sched_halt(void);
 
@@ -74,13 +85,22 @@ void
 push_env_to_queue(struct Env *e)
 {
 	e->env_link = NULL;
+	if (e->last_sched_boost_known < calls_to_sched_boosting) {
+		// a boosting took place, reset the env's vruntime and start from scratch
+		e->priority = 0;
+		e->last_sched_boost_known = calls_to_sched_boosting;
+		// it was run 1 time since boost, and vruntime = weight * times_ran = vruntime_coeficient_for_niceness * 1
+		curenv->vruntime = get_vruntime_weight_for_niceness(e->niceness); 
+	}
+
 	int queue_idx = e->priority;
-	if (queue_idx < NUMBER_OF_QUEUES - 1 && e->env_runs > queues_vruntime_threshold[queue_idx])
+	// if vruntime is higher than threshold, move env to the next queue
+	if (queue_idx < NUMBER_OF_QUEUES - 1 && e->vruntime > queues_vruntime_threshold[queue_idx]) {
+		e->vruntime = 0;
 		queue_idx += 1;
+	}
 
-	queue_idx = queue_idx < NUMBER_OF_QUEUES ? queue_idx : NUMBER_OF_QUEUES - 1;
 	struct env_queue *queue = &env_priority_queues[queue_idx];
-
 	if (queue->tail != NULL) {
 		queue->tail->env_link = e;
 	} else {
@@ -159,20 +179,19 @@ sched_yield(void)
 	if (NENV == 0) {
 		sched_halt();
 	}
-	struct Env *idle;
-	struct Env *to_run = pop_env_to_run();
-
-	if (to_run != NULL) {
-		if (to_run->sched_boosts < calls_to_sched_boosting) {
-			// a boosting took place, reset the env's vruntime and start from scratch
-			to_run->vruntime = 0;
-		}
-		// add_env_to_metric(to_run);
-		to_run->sched_boosts = calls_to_sched_boosting;
-		env_run(to_run);
+	if (envs_ran_since_boost >= RUNS_PER_BOOST) {
+		sched_boosting();
+		envs_ran_since_boost = 0;
 	}
 
-	sched_halt();
+	struct Env *runnable_env = pop_env_to_run();
+
+	if (runnable_env == NULL)
+		sched_halt();	
+
+	// add_env_to_metric(runnable_env);
+	++envs_ran_since_boost;
+	env_run(runnable_env);
 }
 
 // Halt this CPU when there is nothing to do. Wait until the

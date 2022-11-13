@@ -51,7 +51,7 @@ struct Env {
 	enum EnvType env_type;		// Indicates special system environments
 	unsigned env_status;		// Status of the environment
 	uint32_t env_runs;			// Number of times environment has run
-	uint32_t sched_boosts;		// The value of calls_to_sched_boosting during last env run
+	uint32_t last_sched_boost_known;	// The value of calls_to_sched_boosting during last env run
 	int env_cpunum;				// The CPU that the env is running on
 
 	int vruntime;	// Env's virtual runtime
