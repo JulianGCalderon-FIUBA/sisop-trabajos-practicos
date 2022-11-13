@@ -151,7 +151,7 @@ sched_boosting(void)
 	env_priority_queues[0].head = first_env;
 	env_priority_queues[0].tail = last_env;
 
-	cprintf("boosting\n");
+	cprintf("[boosting]\n");
 }
 
 /*

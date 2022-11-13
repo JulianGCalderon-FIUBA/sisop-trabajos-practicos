@@ -67,9 +67,17 @@ i386_init(void)
 	if (TESTED(user_yield) || TESTED(user_spin0))
 		ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
-	// Touch all you want.
-	ENV_CREATE(user_sched_queues, ENV_TYPE_USER);
+	// TEST 1
+	// ENV_CREATE(user_sched_queues, ENV_TYPE_USER);
+
+	// TEST 2
 	// ENV_CREATE(user_sched_roundrobin, ENV_TYPE_USER);
+	// ENV_CREATE(user_sched_roundrobin, ENV_TYPE_USER);
+
+	// TEST 3
+	// ENV_CREATE(user_sched_roundrobin, ENV_TYPE_USER);
+	// ENV_CREATE(user_sched_roundrobin, ENV_TYPE_USER);
+	// envs[0].niceness = -19;
 #endif  // TEST*
 
 	// Eliminar esta llamada una vez completada la parte 1

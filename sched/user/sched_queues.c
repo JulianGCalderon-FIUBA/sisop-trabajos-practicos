@@ -31,9 +31,14 @@ mark_n(int n)
 void
 umain(int argc, char **argv)
 {
+	mark_n(5);
+
+	int eid = sys_getenvid();
+	cprintf(RED "[%d] forking\n" RESET, eid);
+
 	if (!fork()) {
-		mark_n(50);
+		mark_n(5);
 	} else {
-		mark_n(50);
+		mark_n(5);
 	}
 }
