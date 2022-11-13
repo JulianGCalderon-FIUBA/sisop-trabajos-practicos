@@ -17,8 +17,7 @@ struct env_queue {
 
 #define NUMBER_OF_QUEUES 1
 extern struct env_queue env_priority_queues[NUMBER_OF_QUEUES];
-
-
+int queues_runtime_threshold[NUMBER_OF_QUEUES - 1] = { 8, 12, 16 };
 
 // This function does not return.
 void sched_yield(void) __attribute__((noreturn));

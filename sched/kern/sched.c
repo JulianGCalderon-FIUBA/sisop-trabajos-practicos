@@ -23,8 +23,6 @@ size_t times_scheduled_envs = 0;
 // (linked by Env->env_link)
 struct env_queue env_priority_queues[NUMBER_OF_QUEUES] = {0};
 
-int queues_runtime_threshold[] = { 256, 512, 1024 };
-
 // Choose a user environment to run and run it.
 struct Env *
 pop_env_to_run(void)
@@ -145,7 +143,7 @@ sched_halt(void)
 
 	// Once the scheduler has finishied it's work, print statistics on
 	// performance. Your code here
-	print_statistics();
+	//print_statistics();
 
 	// Reset stack pointer, enable interrupts and then halt.
 
