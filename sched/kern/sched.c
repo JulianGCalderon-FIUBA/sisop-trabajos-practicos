@@ -86,6 +86,7 @@ pop_env_to_run(void)
 void
 push_env_to_queue(struct Env *e)
 {
+	cprintf("[pushing %d, priority %d]\n", e->env_id, e->priority);
 	e->env_link = NULL;
 	if (e->last_sched_boost_known < calls_to_sched_boosting) {
 		// a boosting took place, reset the env's vruntime and start from scratch
@@ -112,7 +113,7 @@ push_env_to_queue(struct Env *e)
 	}
 	queue->tail = e;
 
-	// cprintf("[pushing %d to %d]\n", e->env_id, queue_idx);
+	cprintf("[pushing %d to %d]\n", e->env_id, queue_idx);
 }
 
 // Boost all envs to first queue.
@@ -195,6 +196,7 @@ print_statistics()
 void
 sched_yield(void)
 {
+	cprintf("sched_yield\n");
 	calls_to_scheduler++;
 	if (NENV == 0) {
 		sched_halt();
@@ -202,6 +204,7 @@ sched_yield(void)
 
 	if (curenv && curenv->env_status == ENV_RUNNING) {
 		curenv->env_status = ENV_RUNNABLE;
+		cprintf("push_env_to_queue\n");
 		push_env_to_queue(curenv);
 	}
 
@@ -220,6 +223,7 @@ sched_yield(void)
 
 	// add_env_to_metric(runnable_env);
 	++envs_ran_since_boost;
+	cprintf("[running %d]\n", runnable_env->env_id);
 	env_run(runnable_env);
 }
 
@@ -259,7 +263,7 @@ sched_halt(void)
 
 	// Once the scheduler has finishied it's work, print statistics on
 	// performance. Your code here
-	print_statistics();
+	// print_statistics();
 
 	// Reset stack pointer, enable interrupts and then halt.
 
