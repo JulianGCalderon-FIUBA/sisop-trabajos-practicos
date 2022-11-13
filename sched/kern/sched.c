@@ -150,7 +150,7 @@ sched_yield(void)
 	struct Env *to_run = pop_env_to_run();
 
 	if (to_run != NULL) {
-		add_env_to_metric(to_run);
+		// add_env_to_metric(to_run);
 		env_run(to_run);
 	}
 
