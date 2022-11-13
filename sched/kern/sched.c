@@ -1,20 +1,23 @@
 #include <inc/assert.h>
 #include <inc/x86.h>
+#include <inc/sched.h>
+
 #include <kern/spinlock.h>
 #include <kern/env.h>
 #include <kern/pmap.h>
 #include <kern/monitor.h>
-#include <kern/sched.h>
+// #include <kern/sched.h>
 
 
 #define MAX_SCHEDULED_ENVS 4*NENV
 
-// necessary due to inclusion of <kern/sched.h>
-void sched_halt(void) __attribute__((noreturn));
+int queues_runtime_threshold[NUMBER_OF_QUEUES - 1] = { 8, 12, 16 };
+
+void sched_halt(void);
 
 // Scheduling statistics
 size_t calls_to_scheduler = 0;
-envid_t scheduled_envs[MAX_SCHEDULED_ENVS]={0};
+envid_t scheduled_envs[MAX_SCHEDULED_ENVS] = {0};
 size_t env_executions[NENV] = {0};
 size_t times_scheduled_envs = 0;
 
@@ -204,7 +207,4 @@ sched_halt(void)
 	             "jmp 1b\n"
 	             :
 	             : "a"(thiscpu->cpu_ts.ts_esp0));
-
-	for (;;)
-		;
 }

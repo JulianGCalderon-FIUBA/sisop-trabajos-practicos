@@ -6,6 +6,7 @@
 #include <inc/string.h>
 #include <inc/assert.h>
 #include <inc/elf.h>
+#include <inc/sched.h>
 
 #include <kern/env.h>
 #include <kern/pmap.h>
