@@ -86,7 +86,10 @@ i386_init(void)
 	// envs[0].niceness = -10;
 
 	// TEST 5
-	ENV_CREATE(user_niceness_getset, ENV_TYPE_USER);
+	// ENV_CREATE(user_niceness_getset, ENV_TYPE_USER);
+
+	// TEST 6
+	// ENV_CREATE(user_niceness_fork, ENV_TYPE_USER);
 
 	// ENV_CREATE(user_primes, ENV_TYPE_USER);
 #endif  // TEST*

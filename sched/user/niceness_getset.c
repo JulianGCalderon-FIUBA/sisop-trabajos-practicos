@@ -21,7 +21,7 @@ umain(int argc, char **argv)
 		cprintf("failed to update niceness\n");
 	}
 	int i;
-	if ((i = fork() == 0)) {
+	if ((i = fork()) == 0) {
 		// HIJO MODIFICA EL PADRE; DEBERIA FALLAR
 		if (sys_env_set_niceness(eid, 10) == -1)
 			cprintf(RED "child: can't update father's "
