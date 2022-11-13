@@ -169,23 +169,19 @@ sched_boosting(void)
 void
 add_env_to_metric(struct Env *to_run)
 {
-#ifdef VERBOSE
 	scheduled_envs[times_scheduled_envs] = to_run->env_id;
 	times_scheduled_envs++;
-#endif
 }
 
 void
 print_statistics()
 {
-#ifdef VERBOSE
 	for (int i = 0; i < times_scheduled_envs; i++) {
 		env_executions[ENVX(scheduled_envs[i])]++;
 		cprintf("Proccess executed:%d\n", scheduled_envs[i]);
 		cprintf("Amount of executions: %d\n\n",
 		        env_executions[ENVX(scheduled_envs[i])]);
 	}
-#endif
 }
 
 /*
@@ -224,7 +220,7 @@ sched_yield(void)
 
 	add_env_to_metric(runnable_env);
 	++envs_ran_since_boost;
-	// cprintf("[running %d]\n", runnable_env->env_id);
+	//cprintf("[running %d]\n", runnable_env->env_id);
 	env_run(runnable_env);
 }
 
@@ -246,6 +242,7 @@ sched_halt(void)
 	}
 	if (i == NENV) {
 		cprintf("No runnable environments in the system!\n");
+		print_statistics();
 		while (1)
 			monitor(NULL);
 	}
@@ -262,9 +259,6 @@ sched_halt(void)
 	// Release the big kernel lock as if we were "leaving" the kernel
 	unlock_kernel();
 
-	// Once the scheduler has finishied it's work, print statistics on
-	// performance. Your code here
-	print_statistics();
 
 	// Reset stack pointer, enable interrupts and then halt.
 
