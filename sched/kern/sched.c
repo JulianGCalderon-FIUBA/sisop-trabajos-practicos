@@ -9,8 +9,8 @@
 
 #define MAX_SCHEDULED_ENVS 4*NENV
 
-void sched_halt(void);
-struct Env *get_env_to_run(void);
+// necessary due to inclusion of <kern/sched.h>
+void sched_halt(void) __attribute__((noreturn));
 
 // Scheduling statistics
 size_t calls_to_scheduler = 0;
@@ -18,10 +18,18 @@ envid_t scheduled_envs[MAX_SCHEDULED_ENVS]={0};
 size_t env_executions[NENV] = {0};
 size_t times_scheduled_envs = 0;
 
-
 // 4 different queues, one for each priority
 // (linked by Env->env_link)
 struct env_queue env_priority_queues[NUMBER_OF_QUEUES] = {0};
+
+// Each env remembers the value of calls_to_sched_boosting during its last execution
+// it it differs from the current calls_to_sched_boosting, it means that a boosting took place.
+// If a boosting took place, the amount of times the env was executed should be forgotten (set to 0)
+size_t calls_to_sched_boosting = 0;
+
+/*
+ *  ################ QUEUES ################
+ */
 
 // Choose a user environment to run and run it.
 struct Env *
@@ -65,10 +73,48 @@ push_env_to_queue(struct Env *e)
 	queue->tail = e;
 }
 
+void
+sched_boosting(void){
+	++calls_to_sched_boosting;
+	struct Env *first_env = NULL;
+	struct Env *last_env = NULL;
+	
+	// join all queues into one large queue (the first one)
+	for (int i = 0; i < NUMBER_OF_QUEUES - 1; i++) {
+		if (first_env == NULL) {
+			first_env = env_priority_queues[i].head;
+			last_env = env_priority_queues[i].tail;
+		}
+
+		// append next queue to the end of current queue
+		if (last_env && env_priority_queues[i + 1].head) {
+			last_env->env_link = env_priority_queues[i + 1].head;
+			last_env = env_priority_queues[i + 1].tail;
+		}
+		
+		// mark all queues as empty
+		env_priority_queues[i].head = NULL;
+		env_priority_queues[i].tail = NULL;
+	}
+	if (last_env == NULL) {
+		first_env = env_priority_queues[NUMBER_OF_QUEUES].head;
+		first_env = env_priority_queues[NUMBER_OF_QUEUES].tail;
+	}
+	// mark the last queue as empty
+	env_priority_queues[NUMBER_OF_QUEUES].head = NULL;
+	env_priority_queues[NUMBER_OF_QUEUES].tail = NULL;
+
+	env_priority_queues[0].head = first_env;
+	env_priority_queues[0].tail = last_env;
+}
+
+/*
+ *  ################ METRICS ################
+ */
+
 /*
  * Adds the env to the end of the list indicating order of env execution
 */
-
 void add_env_to_metric(struct Env *to_run) {
 	scheduled_envs[times_scheduled_envs] = to_run->env_id;
 	times_scheduled_envs ++;
@@ -82,6 +128,10 @@ void print_statistics(){
 	}
 }
 
+/*
+ *  ################ SCHEDULING ################
+ */
+ 
 /*
  * Find the next runnable env and run it.
  * This function never returns.
@@ -103,9 +153,6 @@ sched_yield(void)
 
 	sched_halt();
 }
-
-
-void sched_halt(void) __attribute__((noreturn));
 
 // Halt this CPU when there is nothing to do. Wait until the
 // timer interrupt wakes it up. This function never returns.
