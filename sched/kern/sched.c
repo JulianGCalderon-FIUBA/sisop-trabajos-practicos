@@ -144,6 +144,7 @@ sched_boosting(void)
 		first_env = env_priority_queues[NUMBER_OF_QUEUES].head;
 		first_env = env_priority_queues[NUMBER_OF_QUEUES].tail;
 	}
+
 	// mark the last queue as empty
 	env_priority_queues[NUMBER_OF_QUEUES].head = NULL;
 	env_priority_queues[NUMBER_OF_QUEUES].tail = NULL;

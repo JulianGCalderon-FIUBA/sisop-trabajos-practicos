@@ -8,7 +8,7 @@ void
 umain(int argc, char **argv)
 {
 	int eid = sys_getenvid();
-	for (int i = 0; i < 10; i++) {
+	for (int i = 0; i < 50; i++) {
 		cprintf(BLUE "[%d] yield\n" RESET, eid);
 		sys_yield();
 	}

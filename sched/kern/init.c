@@ -78,6 +78,12 @@ i386_init(void)
 	// ENV_CREATE(user_sched_roundrobin, ENV_TYPE_USER);
 	// ENV_CREATE(user_sched_roundrobin, ENV_TYPE_USER);
 	// envs[0].niceness = -19;
+
+	// TEST 4
+	ENV_CREATE(user_sched_roundrobin_long, ENV_TYPE_USER);
+	ENV_CREATE(user_sched_roundrobin_long, ENV_TYPE_USER);
+
+	// ENV_CREATE(user_primes, ENV_TYPE_USER);
 #endif  // TEST*
 
 	// Eliminar esta llamada una vez completada la parte 1
