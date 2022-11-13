@@ -55,7 +55,7 @@ uint32_t calls_to_sched_boosting = 0;
  *  ################ QUEUES ################
  */
 
-
+// Returns first runnable env in queues.
 struct Env *
 pop_env_to_run(void)
 {
@@ -81,7 +81,7 @@ pop_env_to_run(void)
 
 
 // Push env to corresponding queue.
-// If env has run more than the threshold for that queue it get's demoted to lower queue.
+// If env has run more than the threshold for that queue it gets demoted to lower queue.
 void
 push_env_to_queue(struct Env *e)
 {
