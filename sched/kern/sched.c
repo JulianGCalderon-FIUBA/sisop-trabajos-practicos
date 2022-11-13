@@ -137,19 +137,24 @@ sched_boosting(void)
 void
 add_env_to_metric(struct Env *to_run)
 {
+
+#ifdef STATS
 	scheduled_envs[times_scheduled_envs] = to_run->env_id;
 	times_scheduled_envs++;
+#endif
 }
 
 void
 print_statistics()
 {
+#ifdef STATS
 	for (int i = 0; i < times_scheduled_envs; i++) {
 		env_executions[ENVX(scheduled_envs[i])]++;
 		cprintf("Proccess executed:%d\n", scheduled_envs[i]);
 		cprintf("Amount of executions: %d\n\n",
 		        env_executions[ENVX(scheduled_envs[i])]);
 	}
+#endif
 }
 
 /*
@@ -175,7 +180,7 @@ sched_yield(void)
 			// a boosting took place, reset the env's vruntime and start from scratch
 			to_run->vruntime = 0;
 		}
-		// add_env_to_metric(to_run);
+		add_env_to_metric(to_run);
 		to_run->sched_boosts = calls_to_sched_boosting;
 		env_run(to_run);
 	}
@@ -219,7 +224,7 @@ sched_halt(void)
 
 	// Once the scheduler has finishied it's work, print statistics on
 	// performance. Your code here
-	// print_statistics();
+	print_statistics();
 
 	// Reset stack pointer, enable interrupts and then halt.
 
