@@ -2,6 +2,7 @@
     "files.associations": {
         "printfmt.h": "c",
         "malloc_test.h": "c",
-        "spinlock.h": "c"
+        "spinlock.h": "c",
+        "lib.h": "c"
     }
 }

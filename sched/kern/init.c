@@ -67,6 +67,7 @@ i386_init(void)
 	if (TESTED(user_yield) || TESTED(user_spin0))
 		ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
+
 	// TEST 1
 	// ENV_CREATE(user_sched_queues, ENV_TYPE_USER);
 
@@ -82,8 +83,12 @@ i386_init(void)
 	// TEST 4
 	// ENV_CREATE(user_sched_roundrobin_long, ENV_TYPE_USER);
 	// ENV_CREATE(user_sched_roundrobin_long, ENV_TYPE_USER);
+	// envs[0].niceness = -10;
 
-	ENV_CREATE(user_primes, ENV_TYPE_USER);
+	// TEST 5
+	ENV_CREATE(user_niceness_getset, ENV_TYPE_USER);
+
+	// ENV_CREATE(user_primes, ENV_TYPE_USER);
 #endif  // TEST*
 
 	// Eliminar esta llamada una vez completada la parte 1

@@ -435,32 +435,31 @@ sys_ipc_recv(void *dstva)
 }
 
 // This function returns an Env's niceness.
-// Returns -1 on error.
 static int
-sys_getenvniceness(void *env)
+sys_env_get_niceness(envid_t envid)
 {
-	if (env == NULL)
-		return -1;
+	struct Env *env = &envs[ENVX(envid)];
 
-	struct Env *e = (struct Env *) env;
-	return e->niceness;
+	return env->niceness;
 }
 
 // This function modifies an Env's niceness.
-// An Env can only modify it's own niceness, and cannot asign itself a lower priority.
+// An Env can only modify it's own niceness, and cannot asign itself a lower
+// priority. return -1 on error, 0 on success
 static int
-sys_env_set_niceness(void *env, int new_niceness)
+sys_env_set_niceness(envid_t envid, int new_niceness)
 {
-	if (env == NULL || env != curenv)
-		return -1;
+	struct Env *env;
+	int ret = envid2env(envid, &env, true);
 
-	struct Env *e = (struct Env *) env;
-	if (e->niceness > new_niceness)
+	if (!env)
+		return -1;
+	if (env->niceness > new_niceness)
 		return -1;
 	if (new_niceness < BEST_NICENESS || new_niceness > WORST_NICENESS)
 		return -1;
 
-	e->niceness = new_niceness;
+	env->niceness = new_niceness;
 
 	return 0;
 }
@@ -500,10 +499,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_env_set_pgfault_upcall(a1, (void *) a2);
 	case SYS_yield:
 		sys_yield();  // No return
-	case SYS_getenvniceness:
-		return sys_getenvniceness((void *) a1);
+	case SYS_env_get_niceness:
+		return sys_env_get_niceness((envid_t) a1);
 	case SYS_env_set_niceness:
-		return sys_env_set_niceness((void *) a1, a2);
+		return sys_env_set_niceness((envid_t) a1, (int) a2);
 	default:
 		return -E_INVAL;
 	}

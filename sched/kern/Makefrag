@@ -81,7 +81,8 @@ KERN_BINFILES +=	user/idle \
 			user/primes \
 			user/sched_queues \
 			user/sched_roundrobin \
-			user/sched_roundrobin_long
+			user/sched_roundrobin_long \
+			user/niceness_getset 
 			
 KERN_OBJFILES := $(patsubst %.c, $(OBJDIR)/%.o, $(KERN_SRCFILES))
 KERN_OBJFILES := $(patsubst %.S, $(OBJDIR)/%.o, $(KERN_OBJFILES))

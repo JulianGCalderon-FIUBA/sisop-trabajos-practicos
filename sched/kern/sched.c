@@ -8,7 +8,7 @@
 #include <kern/monitor.h>
 // #include <kern/sched.h>
 
-
+#define VERBOSE
 #define MAX_SCHEDULED_ENVS 4 * NENV
 
 // the last queue doesn't have a threshold, since envs in said queue can't go any lower
@@ -153,10 +153,11 @@ sched_boosting(void)
 	env_priority_queues[0].head = first_env;
 	env_priority_queues[0].tail = last_env;
 
+#ifdef VERBOSE
 #define RESET "\e[0m"
 #define RED "\e[0;31m"
-
-	// cprintf(RED "[boosting]\n" RESET);
+	cprintf(RED "[boosting]\n" RESET);
+#endif
 }
 
 /*
@@ -169,7 +170,7 @@ sched_boosting(void)
 void
 add_env_to_metric(struct Env *to_run)
 {
-#ifdef STATS
+#ifdef VERBOSE
 	scheduled_envs[times_scheduled_envs] = to_run->env_id;
 	times_scheduled_envs++;
 #endif
@@ -178,7 +179,7 @@ add_env_to_metric(struct Env *to_run)
 void
 print_statistics()
 {
-#ifdef STATS
+#ifdef VERBOSE
 	for (int i = 0; i < times_scheduled_envs; i++) {
 		env_executions[ENVX(scheduled_envs[i])]++;
 		cprintf("Proccess executed:%d\n", scheduled_envs[i]);
