@@ -169,19 +169,23 @@ sched_boosting(void)
 void
 add_env_to_metric(struct Env *to_run)
 {
+#ifdef VERBOSE
 	scheduled_envs[times_scheduled_envs] = to_run->env_id;
 	times_scheduled_envs++;
+#endif
 }
 
 void
 print_statistics()
 {
+#ifdef VERBOSE
 	for (int i = 0; i < times_scheduled_envs; i++) {
 		env_executions[ENVX(scheduled_envs[i])]++;
 		cprintf("Proccess executed:%d\n", scheduled_envs[i]);
 		cprintf("Amount of executions: %d\n\n",
 		        env_executions[ENVX(scheduled_envs[i])]);
 	}
+#endif
 }
 
 /*
