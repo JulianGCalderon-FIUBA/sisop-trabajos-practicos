@@ -10,9 +10,13 @@
 
 // Set NUMBER_OF_QUEUES to 1 for Round-Robin
 // NUMBER_OF_QUEUES should be a number between 1 and MAX_QUEUES
+#ifdef ROUND_ROBIN
 #define NUMBER_OF_QUEUES 1
-#define MAX_QUEUES 4
+#else
+#define NUMBER_OF_QUEUES 4
+#endif
 
+#define MAX_QUEUES 4
 struct env_queue {
 	struct Env *head;
 	struct Env *tail;
