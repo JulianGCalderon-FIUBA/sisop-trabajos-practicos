@@ -19,7 +19,9 @@ siendo el weight un valor que varía según el *niceness* del proceso. El *vrunt
 
 El *boosting*, en vez de realizarse en un tiempo S, se realiza cada 64 ejecuciones. Cada env tiene guardado cuántas corridas hubo cuando se lo ejecutó, por lo que si en una próxima corrida se superó el número de ejecuciones eso indica que debe haber un *boost*. El *boost* mueve todos los procesos a la primera cola, y les cambia la prioridad a la más baja. Esto evita que haya starvation y que procesos con peor *niceness* no se ejecuten nunca. 
 
-Por otra parte, en el caso donde se realiza `fork` 
+Por otra parte, en el caso donde se realiza `fork` se tomó como convención que el proceso hijo iniciará con el mismo *niceness* que el padre.
+
+Finalmente para las estadísticas del scheduler se optó por mostrar el historial de los procesos ejecutados con su correspondiente *env_id* y su ejecución actual. Para poder visualizar las estadísticas es necesario definir *VERBOSE* durante la compilación, de este modo se mostrará el reporte al finalizar la ejecución de todos los procesos.
 
 ## Estado de los registros:
 
