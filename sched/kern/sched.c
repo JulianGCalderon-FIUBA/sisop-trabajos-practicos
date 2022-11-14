@@ -11,7 +11,7 @@
 #define MAX_SCHEDULED_ENVS 4 * NENV
 
 // the last queue doesn't have a threshold, since envs in said queue can't go any lower
-int queues_vruntime_threshold[NUMBER_OF_QUEUES - 1] = { 64, 256, 1024 };
+int queues_vruntime_threshold[MAX_QUEUES - 1] = { 64, 256, 1024 };
 // the thresholds should be defined according to the values in
 // niceness_to_vruntime_weight (kern/env.c) vruntime is set to 0 every time an
 // env changes queue (during boosting or due to env reaching threshold), must be
