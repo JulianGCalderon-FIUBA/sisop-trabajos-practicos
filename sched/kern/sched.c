@@ -182,9 +182,10 @@ print_statistics()
 	for (int i = 0; i < times_scheduled_envs; i++) {
 		env_executions[ENVX(scheduled_envs[i])]++;
 		cprintf("Proccess executed:%d\n", scheduled_envs[i]);
-		cprintf("Amount of executions: %d\n\n",
+		cprintf("Actual execution: %d\n\n",
 		        env_executions[ENVX(scheduled_envs[i])]);
 	}
+	cprintf("Times called to scheduler: %d\n", times_scheduled_envs);
 #endif
 }
 
@@ -224,7 +225,6 @@ sched_yield(void)
 
 	add_env_to_metric(runnable_env);
 	++envs_ran_since_boost;
-	//cprintf("[running %d]\n", runnable_env->env_id);
 	env_run(runnable_env);
 }
 
