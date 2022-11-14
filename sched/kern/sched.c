@@ -70,8 +70,6 @@ pop_env_to_run(void)
 			if (to_run->env_link == NULL)
 				env_priority_queues[i].tail = NULL;
 
-			// cprintf("[popping %d from %d]\n", to_run->env_id, i);
-
 			return to_run;
 		}
 	}
@@ -110,8 +108,6 @@ push_env_to_queue(struct Env *e)
 		queue->head = e;
 	}
 	queue->tail = e;
-
-	// cprintf("[pushing %d to %d]\n", e->env_id, queue_idx);
 }
 
 // Boost all envs to first queue.
@@ -205,11 +201,13 @@ sched_yield(void)
 		sched_halt();
 	}
 
+	// If there is a curent environment, then it is added to corresponding scheduling queue, and set to RUNNABLE
 	if (curenv && curenv->env_status == ENV_RUNNING) {
 		curenv->env_status = ENV_RUNNABLE;
 		push_env_to_queue(curenv);
 	}
 
+	// Every certain amount of executions, boosting occurs
 	if (envs_ran_since_boost >= RUNS_PER_BOOST) {
 		sched_boosting();
 		envs_ran_since_boost = 0;
@@ -220,10 +218,12 @@ sched_yield(void)
 	if (runnable_env == NULL)
 		sched_halt();
 
+	// vruntime for the process is modified before running
 	runnable_env->vruntime +=
 	        get_vruntime_weight_for_niceness(runnable_env->niceness);
 
 	add_env_to_metric(runnable_env);
+
 	++envs_ran_since_boost;
 	env_run(runnable_env);
 }

@@ -68,30 +68,28 @@ i386_init(void)
 		ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 
-	// TEST 1
-	// ENV_CREATE(user_sched_queues, ENV_TYPE_USER);
+	// TEST 1: New process starts with higher priority than already running processes.
+	ENV_CREATE(user_sched_queues, ENV_TYPE_USER);
 
-	// TEST 2
+	// TEST 2. Processes with same niceness arriving at the same time run in round robin.
 	// ENV_CREATE(user_sched_roundrobin, ENV_TYPE_USER);
 	// ENV_CREATE(user_sched_roundrobin, ENV_TYPE_USER);
 
-	// TEST 3
-	// ENV_CREATE(user_sched_roundrobin, ENV_TYPE_USER);
-	// ENV_CREATE(user_sched_roundrobin, ENV_TYPE_USER);
+	// TEST 3: Processes with lower niceness get executed faster than
+	// processes with higher niceness. ENV_CREATE(user_sched_roundrobin,
+	// ENV_TYPE_USER); ENV_CREATE(user_sched_roundrobin, ENV_TYPE_USER);
 	// envs[0].niceness = -19;
 
-	// TEST 4
-	// ENV_CREATE(user_sched_roundrobin_long, ENV_TYPE_USER);
+	// TEST 4: When boosting ocurrs, al processes get scheduled in the
+	// highest queue ENV_CREATE(user_sched_roundrobin_long, ENV_TYPE_USER);
 	// ENV_CREATE(user_sched_roundrobin_long, ENV_TYPE_USER);
 	// envs[0].niceness = -10;
 
-	// TEST 5
-	// ENV_CREATE(user_niceness_getset, ENV_TYPE_USER);
+	// TEST 5: Processes can get and set their own niceness (and their child
+	// processes) ENV_CREATE(user_niceness_getset, ENV_TYPE_USER);
 
-	// TEST 6
+	// TEST 6: When fork, processes get same niceness as their parents
 	// ENV_CREATE(user_niceness_fork, ENV_TYPE_USER);
-
-	// ENV_CREATE(user_primes, ENV_TYPE_USER);
 #endif  // TEST*
 
 	// Eliminar esta llamada una vez completada la parte 1
