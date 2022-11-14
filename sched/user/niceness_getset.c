@@ -16,18 +16,20 @@ umain(int argc, char **argv)
 
 	cprintf("updated niceness: %d\n", sys_env_get_niceness(eid));
 
-
+	cprintf("[setting niceness to -5]\n");
 	if (sys_env_set_niceness(eid, -5) == -1) {
 		cprintf("failed to update niceness\n");
 	}
 	int i;
 	if ((i = fork()) == 0) {
 		// HIJO MODIFICA EL PADRE; DEBERIA FALLAR
+		cprintf("[child: setting father's niceness to 10]\n");
 		if (sys_env_set_niceness(eid, 10) == -1)
 			cprintf(RED "child: can't update father's "
 			            "niceness\n" RESET);
 	} else {
 		// PADRE MODIFICA EL HIJO; DEBERIA FUNCIONAR
+		cprintf("[father: setting child's niceness to 10]\n");
 		sys_env_set_niceness(i, 10);
 		cprintf(BLUE "father: can update child's niceness: %d\n" RESET,
 		        sys_env_get_niceness(i));
