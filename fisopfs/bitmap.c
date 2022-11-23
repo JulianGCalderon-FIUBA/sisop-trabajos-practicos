@@ -28,7 +28,7 @@ static uint64_t *get_bitmap64_by_pos(bitmap128_t *bitmap, int *pos) {
  */
 int bitmap_getbit(bitmap128_t *bitmap, int pos) {
 	uint64_t bitmap64 = *get_bitmap64_by_pos(bitmap, &pos);
-	return (int) bitmap64 << pos >> 63 - pos;
+	return (int) bitmap64 << pos >> (63 - pos);
 }
 
 /*
@@ -36,7 +36,7 @@ int bitmap_getbit(bitmap128_t *bitmap, int pos) {
  */
 void bitmap_setbit(bitmap128_t *bitmap, int pos) {
 	uint64_t *bitmap64 = get_bitmap64_by_pos(bitmap, &pos);
-	uint64_t mask = 1 << 63 - pos;
+	uint64_t mask = 1 << (63 - pos);
 	*bitmap64 |= mask;
 }
 
@@ -45,7 +45,7 @@ void bitmap_setbit(bitmap128_t *bitmap, int pos) {
  */
 void bitmap_clearbit(bitmap128_t *bitmap, int pos) {
 	uint64_t *bitmap64 = get_bitmap64_by_pos(bitmap, &pos);
-	uint64_t mask = 1 << 63 - pos;
+	uint64_t mask = 1 << (63 - pos);
 	*bitmap64 &= ~ mask;
 }
 
