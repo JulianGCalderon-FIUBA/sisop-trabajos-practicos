@@ -3,9 +3,17 @@
 /*
  * Sets all the bits to 0
  */
-void bitmap_reset(bitmap128_t *bitmap) {
+void bitmap_set_all_0(bitmap128_t *bitmap) {
 	bitmap->bitmap64_0 = 0;
 	bitmap->bitmap64_1 = 0;
+}
+
+/*
+ * Sets all the bits to 1
+ */
+void bitmap_set_all_1(bitmap128_t *bitmap) {
+	bitmap->bitmap64_0 = ~0;
+	bitmap->bitmap64_1 = ~0;
 }
 
 /*
@@ -57,7 +65,8 @@ void bitmap_clearbit(bitmap128_t *bitmap, int pos) {
 int bitmap_count_leading_zeros(bitmap128_t *bitmap) {
 	if (bitmap->bitmap64_0 != 0) {
 		return __builtin_clzll(bitmap->bitmap64_0);
-	} else if (bitmap->bitmap64_1 != 0) {
+	}
+	if (bitmap->bitmap64_1 != 0) {
 		return __builtin_clzll(bitmap->bitmap64_1) + 64;
 	}
 	return -1;

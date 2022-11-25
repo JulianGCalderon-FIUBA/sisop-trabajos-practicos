@@ -8,7 +8,12 @@ typedef struct {
 /*
  * Sets all the bits to 0
  */
-void bitmap_reset(bitmap128_t *bitmap);
+void bitmap_set_all_0(bitmap128_t *bitmap);
+
+/*
+ * Sets all the bits to 1
+ */
+void bitmap_set_all_1(bitmap128_t *bitmap);
 
 /*
  * Get value stored in position "pos"
