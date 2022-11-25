@@ -1,3 +1,6 @@
+#ifndef BITMAP_H
+#define BITMAP_H
+
 #include <stdint.h>
 
 typedef struct {
@@ -34,3 +37,5 @@ void bitmap_clearbit(bitmap128_t *bitmap, int pos);
  * Get the position of the leftmost bit that has a value of 1
  */
 int bitmap_most_significant_bit(bitmap128_t *bitmap);
+
+#endif // BITMAP_H
