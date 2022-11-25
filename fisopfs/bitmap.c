@@ -28,7 +28,8 @@ static uint64_t *get_bitmap64_by_pos(bitmap128_t *bitmap, int *pos) {
  */
 int bitmap_getbit(bitmap128_t *bitmap, int pos) {
 	uint64_t bitmap64 = *get_bitmap64_by_pos(bitmap, &pos);
-	return (int) bitmap64 << pos >> (63 - pos);
+	uint64_t mask = ULONGLONG_MAX - 1; // 0xFF...Fe
+	return (int) mask & (bitmap64 >> (63 - pos));
 }
 
 /*
