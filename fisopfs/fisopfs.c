@@ -4,30 +4,31 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <linux/limits.h>
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include "inode.h"
+
+superblock_t superblock;
 
 static int
 fisopfs_getattr(const char *path, struct stat *st)
 {
 	printf("[debug] fisopfs_getattr(%s)\n", path);
-
-	if (strcmp(path, "/") == 0) {
-		st->st_uid = 1717;
-		st->st_mode = __S_IFDIR | 0755;
-		st->st_nlink = 2;
-	} else if (strcmp(path, "/fisop") == 0) {
-		st->st_uid = 1818;
-		st->st_mode = __S_IFREG | 0644;
-		st->st_size = 2048;
-		st->st_nlink = 1;
-	} else {
+	int inode_id;
+	inode_t *inode;
+	char path_copy[PATH_MAX];
+	strcpy(path_copy, path);
+	
+	if ((inode_id = get_inode_id(&superblock, path_copy)) < 0)
 		return -ENOENT;
-	}
+	if (get_inode_by_id(&superblock, inode_id, &inode) != 0)
+		return -ENOENT;
 
+	void custom_stats_to_std(st, inode->stats);
 	return 0;
 }
 
@@ -89,5 +90,7 @@ static struct fuse_operations operations = {
 int
 main(int argc, char *argv[])
 {
+	if (init_filesystem(&superblock) != 0)
+		return -1;
 	return fuse_main(argc, argv, &operations, NULL);
 }
