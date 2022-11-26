@@ -80,21 +80,7 @@ int create_inode(superblock_t *superblock); // definir args
  */
 int delete_inode(superblock_t *superblock, int inode_id); // si el inodo es un dir es recursivo o da error?
 
-
-void custom_stats_to_std(struct stat *dest, const struct tiny_stat src) {
-	dest->st_ino = src.st_ino;
-	dest->st_nlink = src.st_nlink;
-	dest->st_mode = src.st_mode;
-	dest->st_uid = src.st_uid;
-	dest->st_gid = src.st_gid;
-	dest->st_size = src.st_size;
-	dest->st_atime = src.st_atime;
-	dest->st_mtime = src.st_mtime;
-	dest->st_ctime = src.st_ctime;
-	dest->st_blocks = src.st_blocks;
-}
-
-void init_dir_stats(struct tiny_stat *dir_st) {
+void init_dir_stats(struct stat *dir_st) {
 	dir_st->st_nlink = 2; // one from parent and another one from '.'
 	dir_st->st_mode = S_IFDIR | ALL_PERMISSIONS;
 	dir_st->st_uid = 1000;
@@ -124,7 +110,7 @@ int init_filesystem(superblock_t *superblock) {
 	superblock->inode_tables[0] = inode_table;
 	bitmap_set_all_1(&inode_table->free_inodes_bitmap);
 	bitmap_clearbit(&inode_table->free_inodes_bitmap, 0);
-	struct tiny_stat *root_dir_st = &inode_table->inodes[0].stats;
+	struct stat *root_dir_st = &inode_table->inodes[0].stats;
 	init_dir_stats(root_dir_st);
 	root_dir_st->st_ino = 0;
 	return 0;

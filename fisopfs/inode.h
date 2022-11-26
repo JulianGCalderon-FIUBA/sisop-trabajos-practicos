@@ -11,27 +11,11 @@
 #define INODES_PER_TABLE (PAGE_SIZE - sizeof(bitmap128_t)) / sizeof(inode_t)
 #define AMOUNT_OF_INODE_TABLES 128
 
-
-struct {
-	ino_t     st_ino;
-	nlink_t   st_nlink;
-	mode_t    st_mode;
-	uid_t     st_uid;
-	gid_t     st_gid;
-	off_t     st_size;
-	time_t    st_atime;
-	time_t    st_mtime;
-	time_t    st_ctime;
-	time_t    st_btime;
-	blkcnt_t  st_blocks;
-} tiny_stat;
-// blksize_t st_blksize; unknown type name blksize_t
-
 typedef char* page_t; // pointer to mem-block of size 4096
 
 typedef struct {
 	page_t *pages[PAGES_PER_INODE];
-	struct tiny_stat stats;
+	struct stat stats;
 } inode_t;
 
 typedef struct {
@@ -72,8 +56,6 @@ int delete_inode(superblock_t *superblock, int inode_id); // si el inodo es un d
 /*
  * 
  */
-int init_filesystem(superblock_t *superblock); 
-
-void custom_stats_to_std(struct stat *dest, const struct tiny_stat src);
+int init_filesystem(superblock_t *superblock);
 
 #endif // INODE_H

@@ -28,7 +28,7 @@ fisopfs_getattr(const char *path, struct stat *st)
 	if (get_inode_by_id(&superblock, inode_id, &inode) != 0)
 		return -ENOENT;
 
-	void custom_stats_to_std(st, inode->stats);
+	*st = inode->stats;
 	return 0;
 }
 
