@@ -1,15 +1,16 @@
 #define FUSE_USE_VERSION 30
 
 #include <fuse.h>
+#include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <linux/limits.h>
+#include <string.h>
+#include <assert.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/file.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
+#include <sys/types.h>
+#include <linux/limits.h>
 #include "inode.h"
 
 superblock_t superblock;
@@ -29,29 +30,35 @@ fisopfs_getattr(const char *path, struct stat *st)
 		return -ENOENT;
 
 	*st = inode->stats;
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 static int
-fisopfs_readdir(const char *path,
-                void *buffer,
-                fuse_fill_dir_t filler,
-                off_t offset,
-                struct fuse_file_info *fi)
-{
-	printf("[debug] fisopfs_readdir(%s)", path);
+fisopfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
+	printf("[debug] fisopfs_readdir(%s)\n", path);
+	// get directory inode
+	int inode_id = get_inode_id(&superblock, path);
+	inode_t *directory;
+	int ret_value = get_inode_by_id(&superblock, inode_id, &directory);
+	if (ret_value != EXIT_SUCCESS)
+		return ret_value;
 
-	// Los directorios '.' y '..'
-	filler(buffer, ".", NULL, 0);
-	filler(buffer, "..", NULL, 0);
+	// get dir_entry inode
+	inode_t *dir_entry_inode;
+	dir_entry_t *dir_entry = read_directory(directory, offset);
+	offset += sizeof(dir_entry_t);
+	while (dir_entry->name[0] != '\0') { // dir_entry is valid
+		assert(get_inode_by_id(&superblock, dir_entry->inode_id, &dir_entry_inode) == EXIT_SUCCESS); // get dir_entry's inode
+		if ( filler(buffer, dir_entry->name, &dir_entry_inode->stats, offset) ) {
+			printf("filler returned 1\n");
+			return 1; // ERROR, filler's buffer is full
+		}
 
-	// Si nos preguntan por el directorio raiz, solo tenemos un archivo
-	if (strcmp(path, "/") == 0) {
-		filler(buffer, "fisop", NULL, 0);
-		return 0;
+		dir_entry = read_directory(directory, offset);
+		offset += sizeof(dir_entry_t);
 	}
 
-	return -ENOENT;
+	return 0;
 }
 
 #define MAX_CONTENIDO
@@ -90,7 +97,7 @@ static struct fuse_operations operations = {
 int
 main(int argc, char *argv[])
 {
-	if (init_filesystem(&superblock) != 0)
-		return -1;
+	if (init_filesystem(&superblock) != EXIT_SUCCESS)
+		return EXIT_FAILURE;
 	return fuse_main(argc, argv, &operations, NULL);
 }

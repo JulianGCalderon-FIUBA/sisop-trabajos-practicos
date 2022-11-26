@@ -7,15 +7,21 @@
 
 #define MAX_FILENAME_LENGTH 128
 #define PAGES_PER_INODE 5
-#define PAGE_SIZE 4096
+#define PAGE_SIZE 4096 // must be a power of 2
 #define INODES_PER_TABLE (PAGE_SIZE - sizeof(bitmap128_t)) / sizeof(inode_t)
+#define DIR_ENTRIES_PER_PAGE PAGE_SIZE / sizeof(dir_entry_t) // must be at least 3
 #define AMOUNT_OF_INODE_TABLES 128
 
-typedef char* page_t; // pointer to mem-block of size 4096
 
 typedef struct {
-	page_t *pages[PAGES_PER_INODE];
+	char name[MAX_FILENAME_LENGTH];
+	int inode_id;
+} dir_entry_t;
+
+typedef struct {
 	struct stat stats;
+	time_t stat_crtime;
+	char *pages[PAGES_PER_INODE];
 } inode_t;
 
 typedef struct {
@@ -28,30 +34,22 @@ typedef struct {
 	bitmap128_t free_tables_bitmap;
 } superblock_t;
 
-typedef struct {
-	char name[INODES_PER_TABLE];
-	int inode_id;
-} dir_entry_t;
+
+/*
+ * Returns the dir_entry at offset within the dir directory.
+ */
+dir_entry_t *read_directory(inode_t *dir, size_t offset);
+
+/*
+ * Stores in inode_dest a pointer to the inode, or NULL in case of error.
+ * The actual inode can be modified through the pointer, it is not a copy.
+ */
+int get_inode_by_id(superblock_t *superblock, int inode_id, inode_t **inode_dest);
 
 /*
  * 
  */
-int get_inode_by_id(superblock_t *superblock, int inode_id, inode_t **inode);
-
-/*
- * 
- */
-int get_inode_id(superblock_t *superblock, char *path);
-
-/*
- * 
- */
-int create_inode(superblock_t *superblock); // definir args
-
-/*
- * 
- */
-int delete_inode(superblock_t *superblock, int inode_id); // si el inodo es un dir es recursivo o da error?
+int get_inode_id(superblock_t *superblock, const char *path);
 
 /*
  * 
