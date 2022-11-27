@@ -21,12 +21,10 @@ fisopfs_getattr(const char *path, struct stat *st)
 	printf("[debug] fisopfs_getattr(%s)\n", path);
 	int inode_id;
 	inode_t *inode;
-	char path_copy[PATH_MAX];
-	strcpy(path_copy, path);
 	
-	if ((inode_id = get_inode_id(&superblock, path_copy)) < 0)
+	if ((inode_id = get_iid_from_path(&superblock, path)) < 0)
 		return -ENOENT;
-	if (get_inode_by_id(&superblock, inode_id, &inode) != 0)
+	if (get_inode_from_iid(&superblock, inode_id, &inode) != 0)
 		return -ENOENT;
 
 	*st = inode->stats;
@@ -37,9 +35,9 @@ static int
 fisopfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
 	printf("[debug] fisopfs_readdir(%s)\n", path);
 	// get directory inode
-	int inode_id = get_inode_id(&superblock, path);
+	int inode_id = get_iid_from_path(&superblock, path);
 	inode_t *directory;
-	int ret_value = get_inode_by_id(&superblock, inode_id, &directory);
+	int ret_value = get_inode_from_iid(&superblock, inode_id, &directory);
 	if (ret_value != EXIT_SUCCESS)
 		return ret_value;
 
@@ -48,7 +46,7 @@ fisopfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t of
 	dir_entry_t *dir_entry = read_directory(directory, offset);
 	offset += sizeof(dir_entry_t);
 	while (dir_entry->name[0] != '\0') { // dir_entry is valid
-		assert(get_inode_by_id(&superblock, dir_entry->inode_id, &dir_entry_inode) == EXIT_SUCCESS); // get dir_entry's inode
+		assert(get_inode_from_iid(&superblock, dir_entry->inode_id, &dir_entry_inode) == EXIT_SUCCESS); // get dir_entry's inode
 		if ( filler(buffer, dir_entry->name, &dir_entry_inode->stats, offset) ) {
 			printf("filler returned 1\n");
 			return 1; // ERROR, filler's buffer is full
