@@ -39,9 +39,16 @@ typedef struct {
  * Marks a free inode as occupied, and returns a pointer to the inode.
  * Upon failure, returns NULL.
  * The inode stats are not initialised, except for the inode_id.
- * Internally requests memory with mmap if necessary, which is later freed by destroy_filesystem
+ * Internally requests memory with mmap if necessary, which can be freed with free_inode.
+ * Alternatively, calls to destroy_filesystem free all unfreed inodes.
  */
 inode_t *malloc_inode(superblock_t *superblock);
+
+/*
+ * Marks an inode as free so it can be reused.
+ * Frees a memory page if there are no alloc'd inodes in the page.
+ */
+void free_inode(superblock_t *superblock, int inode_id);
 
 /*
  * Returns the dir_entry at offset within the dir directory.
@@ -63,5 +70,10 @@ int get_iid_from_path(superblock_t *superblock, const char *path);
  * 
  */
 int init_filesystem(superblock_t *superblock);
+
+/*
+ * Frees all requested memory.
+ */
+void destroy_filesystem(superblock_t *superblock);
 
 #endif // INODE_H

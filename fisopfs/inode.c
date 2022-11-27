@@ -122,7 +122,6 @@ inode_t *alloc_inode(superblock_t *superblock) {
 			continue;
 
 		table = superblock->inode_tables[table_num];
-		bitmap_has_set_bit
 		if (!bitmap_has_set_bit(table->free_inodes_bitmap)) // there are no free inodes in the table
 			continue;
 		free_inode_id = bitmap_most_significant_bit(table->free_inodes_bitmap); // first free inode in table
@@ -157,13 +156,29 @@ inode_t *malloc_inode(superblock_t *superblock) {
 	return inode_dest;
 }
 
-
-
 /*
  * Returns the position of the table in superblock->inode_tables,
  * or a negative error code upon failure.
  */
-int malloc_inode_table(superblock_t *superblock);
+int malloc_inode_table(superblock_t *superblock) {
+	int free_table_num = bitmap_most_significant_bit(superblock->free_tables_bitmap);
+	if (free_table_num < 0) // The array superblock->inode_tables is full
+		return -ENOMEM;
+
+	inode_table_t *inode_table = mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+	if (inode_table == NULL)
+		return -ENOMEM;
+	bitmap_clearbit(&superblock->free_tables_bitmap, free_table_num);
+	superblock->inode_tables[free_table_num] = inode_table;
+	bitmap_set_all_1(&inode_table->free_inodes_bitmap);
+	return free_table_num;
+}
+
+/*
+ * Marks an inode as free so it can be reused.
+ * Frees a memory page if there are no alloc'd inodes in the page.
+ */
+void free_inode(superblock_t *superblock, int inode_id);
 
 /*
  * Does not set the inode id inside the inode struct, must be done externally
@@ -207,16 +222,13 @@ int init_dir(inode_t *dir, int inode_id, int parent_inode_id) {
 int init_filesystem(superblock_t *superblock) {
 	puts("[debug] init_filesystem");
 	bitmap_set_all_1(&superblock->free_tables_bitmap); // mark all tables as free/unused
-	bitmap_clearbit(&superblock->free_tables_bitmap, 0); // ...except for the first table
 	
 	// request memory for the first inode table
-	inode_table_t *inode_table = mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
-	if (inode_table == NULL)
+	if (malloc_inode_table() < 0) // either failed or returned 0 (the first not alloc'd table)
 		return ENOMEM;
+	inode_table_t *inode_table = superblock->inode_tables[0];
 	
 	// initialise superblock, inode_table and root_dir
-	superblock->inode_tables[0] = inode_table;
-	bitmap_set_all_1(&inode_table->free_inodes_bitmap);
 	bitmap_clearbit(&inode_table->free_inodes_bitmap, 0);
 	inode_t *root_dir = &inode_table->inodes[0];
 	int root_inode_id = 0; // easier to read
