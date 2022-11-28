@@ -144,15 +144,16 @@ int malloc_inode_page(inode_t *inode, int page_num) {
 	return EXIT_SUCCESS;
 }
 
-ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode) {
+ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset) {
 	if (buffer_len == 0)
 		return 0;
-	int cur_page_num = inode->stats.st_size / PAGE_SIZE;
+	int cur_page_num = file_offset / PAGE_SIZE;
 	
 	// if no bytes have been written, return ERROR CODE upon error
-	if (inode->stats.st_size >= PAGE_SIZE * PAGES_PER_INODE) {
+	if (inode->stats.st_size >= PAGE_SIZE * PAGES_PER_INODE)
 		return -EFBIG; // "File too large" not very specific but better than ENOMEM
-	}
+	if (file_offset > inode->stats.st_size)
+		return -EINVAL;
 	int ret_val;
 	if (inode->pages[cur_page_num] == NULL) { // may happen if prev page is full, or this is the first page
 		if ((ret_val = malloc_inode_page(inode, cur_page_num)) != EXIT_SUCCESS)
@@ -162,7 +163,7 @@ ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode) {
 	// write one page at a time, and return amount of bytes written
 	size_t bytes_to_write;
 	size_t bytes_remaining = buffer_len;
-	size_t page_offset = inode->stats.st_size % PAGE_SIZE;
+	size_t page_offset = file_offset % PAGE_SIZE;
 	char *page = inode->pages[cur_page_num];
 	while (bytes_remaining > 0) {
 		if (page == NULL) { // may happen if prev page is full, or this is the first page
@@ -172,11 +173,41 @@ ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode) {
 		}
 		bytes_to_write = bytes_remaining <= PAGE_SIZE - page_offset ? bytes_remaining : PAGE_SIZE - page_offset;
 		memcpy(page + page_offset, buffer, bytes_to_write);
-		bytes_remaining = bytes_remaining - bytes_to_write;
-		inode->stats.st_size += bytes_to_write;
+		bytes_remaining -= bytes_to_write;
 		++cur_page_num;
 		page_offset = 0;
 		page = NULL;
 	}
+	file_offset += buffer_len - bytes_remaining; // initial offset + bytes written
+	inode->stats.st_size = inode->stats.st_size > file_offset ? inode->stats.st_size : file_offset;
 	return buffer_len - bytes_remaining;
+}
+
+size_t min(size_t x, size_t y) {
+	return x < y ? x : y;
+
+}
+
+ssize_t inode_read(char *buffer, size_t ttl_bytes_to_read, inode_t *inode, size_t file_offset) {
+	if (buffer_len == 0)
+		return 0;
+	if (file_offset > inode->stats.st_size)
+		return -EINVAL;
+	int cur_page_num = file_offset / PAGE_SIZE;
+	size_t page_offset = file_offset % PAGE_SIZE;
+	size_t ttl_bytes_to_read = min(ttl_bytes_to_read, inode->stats.st_size - file_offset);
+	size_t bytes_remaining = ttl_bytes_to_read;
+	size_t bytes_to_read;
+	char *page;
+	// read one page at a time, and return amount of bytes read
+	while (bytes_remaining > 0) {
+		page = inode->pages[cur_page_num];
+		bytes_to_read = min(bytes_remaining, PAGE_SIZE - page_offset);
+		memcpy(buffer, page + page_offset, bytes_to_read);
+		bytes_remaining -= bytes_to_read;
+		++cur_page_num;
+		page_offset = 0;
+		page = NULL;
+	}
+	return ttl_bytes_to_read - bytes_remaining;
 }

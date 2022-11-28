@@ -87,7 +87,7 @@ int create_dir_entry(inode_t *parent_dir, int entry_inode_id, const char *name) 
 		.inode_id = entry_inode_id
 	};
 	strcpy(dir_entry.name, name);
-	ssize_t ret_val = inode_write((char *) &dir_entry, sizeof(dir_entry_t), parent_dir);
+	ssize_t ret_val = inode_write((char *) &dir_entry, sizeof(dir_entry_t), parent_dir, parent_dir->stats.st_size);
 	return ret_val > 0 ? EXIT_SUCCESS : ret_val;
 }
 
