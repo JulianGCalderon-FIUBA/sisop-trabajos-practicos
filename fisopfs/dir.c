@@ -100,9 +100,9 @@ int init_dir(inode_t *dir, int inode_id, int parent_inode_id) {
 	// set stats
 	struct stat *dir_st = &dir->stats;
 	dir_st->st_nlink = 2; // one from parent and another one from '.'
-	dir_st->st_mode = S_IFDIR | ALL_PERMISSIONS;
-	dir_st->st_uid = 1000;
-	dir_st->st_gid = 1000;
+	dir_st->st_mode = S_IFDIR | ALL_PERMISSIONS; // podríamos usar umask para ver los default
+	dir_st->st_uid = 1000; // CORREGIR: deberíamos setearlo al usuario actual (getcuruid? algo así)
+	dir_st->st_gid = 1000; // CORREGIR: deberíamos setearlo al grupo actual
 	time(&dir->stat_crtime);
 	time(&dir_st->st_mtime);
 	time(&dir_st->st_ctime);
