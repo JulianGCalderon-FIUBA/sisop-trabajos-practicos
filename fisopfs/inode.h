@@ -51,11 +51,6 @@ inode_t *malloc_inode(superblock_t *superblock);
 void free_inode(superblock_t *superblock, int inode_id);
 
 /*
- * Returns the dir_entry at offset within the dir directory.
- */
-dir_entry_t *read_directory(inode_t *dir, size_t offset);
-
-/*
  * Stores in inode_dest a pointer to the inode, or NULL in case of error.
  * The actual inode can be modified through the pointer, it is not a copy.
  */
@@ -63,17 +58,8 @@ int get_inode_from_iid(superblock_t *superblock, int inode_id, inode_t **inode_d
 
 /*
  * 
- */
-int get_iid_from_path(superblock_t *superblock, const char *path);
-
-/*
  * 
  */
-int init_filesystem(superblock_t *superblock);
-
-/*
- * Frees all requested memory.
- */
-void destroy_filesystem(superblock_t *superblock);
+ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode);
 
 #endif // INODE_H

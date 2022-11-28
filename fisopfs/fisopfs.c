@@ -11,13 +11,13 @@
 #include <sys/file.h>
 #include <sys/types.h>
 #include <linux/limits.h>
+#include "bitmap.h"
 #include "inode.h"
+#include "dir.h"
 
 superblock_t superblock;
 
-static int
-fisopfs_getattr(const char *path, struct stat *st)
-{
+static int fisopfs_getattr(const char *path, struct stat *st) {
 	printf("[debug] fisopfs_getattr(%s)\n", path);
 	int inode_id;
 	inode_t *inode;
@@ -31,8 +31,7 @@ fisopfs_getattr(const char *path, struct stat *st)
 	return EXIT_SUCCESS;
 }
 
-static int
-fisopfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
+static int fisopfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
 	printf("[debug] fisopfs_readdir(%s)\n", path);
 	// get directory inode
 	int inode_id = get_iid_from_path(&superblock, path);
@@ -62,13 +61,7 @@ fisopfs_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t of
 #define MAX_CONTENIDO
 static char fisop_file_contenidos[MAX_CONTENIDO] = "hola fisopfs!\n";
 
-static int
-fisopfs_read(const char *path,
-             char *buffer,
-             size_t size,
-             off_t offset,
-             struct fuse_file_info *fi)
-{
+static int fisopfs_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
 	printf("[debug] fisopfs_read(%s, %lu, %lu)\n", path, offset, size);
 
 	// Solo tenemos un archivo hardcodeado!
@@ -92,10 +85,22 @@ static struct fuse_operations operations = {
 	.read = fisopfs_read,
 };
 
-int
-main(int argc, char *argv[])
-{
-	if (init_filesystem(&superblock) != EXIT_SUCCESS)
-		return EXIT_FAILURE;
+/*
+ * 
+ */
+void init_filesystem(superblock_t *superblock) {
+	bitmap_set_all_1(&superblock->free_tables_bitmap); // mark all tables as free/unused
+	// initialise root_dir
+	assert(create_dir(superblock, "/", ROOT_DIR_INODE_ID) == ROOT_DIR_INODE_ID);
+}
+
+/*
+ * Frees all requested memory.
+ * Probably unused since main calls fuse_main
+ */
+void destroy_filesystem(superblock_t *superblock);
+
+int main(int argc, char *argv[]) {
+	init_filesystem(&superblock);
 	return fuse_main(argc, argv, &operations, NULL);
 }
