@@ -47,7 +47,7 @@ static int fisopfs_readdir(const char *path, void *buffer, fuse_fill_dir_t fille
 	while (dir_entry->name[0] != '\0') { // dir_entry is valid
 		assert(get_inode_from_iid(&superblock, dir_entry->inode_id, &dir_entry_inode) == EXIT_SUCCESS); // get dir_entry's inode
 		if ( filler(buffer, dir_entry->name, &dir_entry_inode->stats, offset) ) {
-			printf("filler returned 1\n");
+			printf("[debug] fisopfs_readdir: filler returned something other than 0\n");
 			return 1; // ERROR, filler's buffer is full
 		}
 
@@ -85,22 +85,10 @@ static struct fuse_operations operations = {
 	.read = fisopfs_read,
 };
 
-/*
- * 
- */
-void init_filesystem(superblock_t *superblock) {
+int main(int argc, char *argv[]) {
+	// init filesystem
 	bitmap_set_all_1(&superblock->free_tables_bitmap); // mark all tables as free/unused
 	// initialise root_dir
 	assert(create_dir(superblock, "/", ROOT_DIR_INODE_ID) == ROOT_DIR_INODE_ID);
-}
-
-/*
- * Frees all requested memory.
- * Probably unused since main calls fuse_main
- */
-void destroy_filesystem(superblock_t *superblock);
-
-int main(int argc, char *argv[]) {
-	init_filesystem(&superblock);
 	return fuse_main(argc, argv, &operations, NULL);
 }

@@ -21,10 +21,11 @@ dir_entry_t *read_directory(inode_t *dir, size_t offset) {
 		return NULL;
 
 	offset &= PAGE_SIZE - 1; // equivalent to the % operator when PAGE_SIZE is a power of 2
-	char *dir_entries = (char *) dir->pages[page_num]; // SEG FAULT
+	char *dir_entries = (char *) dir->pages[page_num]; // This might cause to return (NULL + offset)
 	return (dir_entry_t *) (dir_entries + offset); // if offset pointed to invalid dir_entry, dir_entry->name[0] == '\0'
 }
 // CORREGIR: no me gusta que pueda devolver dos cosas distintas en caso de error (NULL o una dir_entry inválida)
+// además hay que mover la lógica de la lectura al módulo inode.c, dentro de una función inode_read
 
 /*
  * Given a dir and a relative path, returns the inode_id for the file/directory targeted by path

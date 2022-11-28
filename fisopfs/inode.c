@@ -2,7 +2,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
 #include <sys/mman.h>
 #include <linux/limits.h>
@@ -90,16 +89,13 @@ int malloc_inode_table(superblock_t *superblock) {
  * Internally requests memory with mmap if necessary, which is later freed by destroy_filesystem
  */
 inode_t *malloc_inode(superblock_t *superblock) {
-	puts("[debug] malloc_inode");
 	inode_table_t *table;
 	inode_t *inode_dest;
 	if ((inode_dest = alloc_inode(superblock)))
 		return inode_dest;
 	
 	// no free inodes, request memory
-	puts("[debug] malloc_inode_table");
 	int table_num = malloc_inode_table(superblock);
-	puts("[debug] malloc_inode_table end");
 	if (table_num < 0) {
 		return NULL;
 	}
@@ -110,7 +106,6 @@ inode_t *malloc_inode(superblock_t *superblock) {
 	for (int page_num = 0; page_num < PAGES_PER_INODE; ++page_num)
 		inode_dest->pages[page_num] = NULL;
 	inode_dest->stats.st_size = 0;
-	puts("[debug] malloc_inode end");
 	return inode_dest;
 }
 
@@ -176,9 +171,10 @@ ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode) {
 		bytes_to_write = bytes_remaining <= PAGE_SIZE - page_offset ? bytes_remaining : PAGE_SIZE - page_offset;
 		memcpy(page + page_offset, buffer, bytes_to_write);
 		bytes_remaining = bytes_remaining - bytes_to_write;
+		inode->stats.st_size += bytes_to_write;
 		++cur_page_num;
 		page_offset = 0;
 		page = NULL;
-	}	
+	}
 	return buffer_len - bytes_remaining;
 }
