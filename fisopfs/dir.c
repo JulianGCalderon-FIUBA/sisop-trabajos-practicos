@@ -13,19 +13,19 @@
 #define ALL_PERMISSIONS (S_IRWXU | S_IRWXG | S_IRWXO)
 
 /*
- * Returns the dir_entry at offset within the dir directory.
+ * Returns the dir_entry at offset through the dir_entry_dest parameter.
+ * If offset points to EOF, dir_entry_dest->name[0] == '\0', and dir_entry_dest->inode_id == -1
+ * Upon error returns the error code.
  */
-dir_entry_t *read_directory(inode_t *dir, size_t offset) {
-	int page_num = offset / PAGE_SIZE;
-	if (page_num >= dir->stats.st_blocks)
-		return NULL;
-
-	offset &= PAGE_SIZE - 1; // equivalent to the % operator when PAGE_SIZE is a power of 2
-	char *dir_entries = (char *) dir->pages[page_num]; // This might cause to return (NULL + offset)
-	return (dir_entry_t *) (dir_entries + offset); // if offset pointed to invalid dir_entry, dir_entry->name[0] == '\0'
+int read_directory(inode_t *dir, size_t offset, dir_entry_t *dir_entry_dest) {
+	ssize_t ret_val = inode_read((char *) dir_entry_dest, sizeof(dir_entry_t), dir, offset);
+	if (ret_val != sizeof(dir_entry_t)) {
+		dir_entry_dest->name[0] = '\0';
+		dir_entry_dest->inode_id = -1;
+		return ret_val >= 0 ? -1 : -ret_val; // if inode_read didn't return an error, return -1
+	}
+	return EXIT_SUCCESS;
 }
-// CORREGIR: no me gusta que pueda devolver dos cosas distintas en caso de error (NULL o una dir_entry inválida)
-// además hay que mover la lógica de la lectura al módulo inode.c, dentro de una función inode_read
 
 /*
  * Given a dir and a relative path, returns the inode_id for the file/directory targeted by path
@@ -39,20 +39,20 @@ int _get_iid_from_path(superblock_t *superblock, inode_t *dir, char *path) {
 	*slash_pos = '\0';
 
 	size_t offset = 0;
-	dir_entry_t *dir_entry;
+	dir_entry_t dir_entry;
 	inode_t *subdir;
-	dir_entry = read_directory(dir, offset);
-	while (dir_entry->name[0]) { // name starts with '\0' if dir_entry is not valid
+	read_directory(dir, offset, &dir_entry);
+	while (dir_entry.inode_id >= 0) { // inode_id < 0 indicates invalid inode
 		offset += sizeof(dir_entry_t);
-		if (strncmp(dir_entry->name, path, MAX_FILENAME_LENGTH) != 0) {// the path doesn't match
-			dir_entry = read_directory(dir, offset);
+		if (strncmp(dir_entry.name, path, MAX_FILENAME_LENGTH) != 0) {// the path doesn't match
+			read_directory(dir, offset, &dir_entry);
 			continue;
 		}
 		if (end_of_path) // end of path, file or dir was found
-			return dir_entry->inode_id;
+			return dir_entry.inode_id;
 
 		// expecting a dir to continue the search
-		get_inode_from_iid(superblock, dir_entry->inode_id, &subdir);
+		get_inode_from_iid(superblock, dir_entry.inode_id, &subdir);
 		if (S_ISDIR(subdir->stats.st_mode)) {
 			return _get_iid_from_path(superblock, subdir, slash_pos + 1);
 		}
@@ -133,11 +133,10 @@ int create_dir(superblock_t *superblock, const char *name, int parent_inode_id) 
 
 	// increase parent's link count, and add self to parent's dir_entries
 	inode_t *parent_dir;
-	if (get_inode_from_iid(superblock, parent_inode_id, &parent_dir) != EXIT_SUCCESS)
-		continue;
-	if (dir_inode_id != ROOT_DIR_INODE_ID) {
-		create_dir_entry(parent_dir, dir_inode_id, name);
-		++parent_dir->stats.st_nlink;
+	if (get_inode_from_iid(superblock, parent_inode_id, &parent_dir) != EXIT_SUCCESS
+		&& dir_inode_id != ROOT_DIR_INODE_ID) {
+			create_dir_entry(parent_dir, dir_inode_id, name);
+			++parent_dir->stats.st_nlink;
 	}
 	return dir->stats.st_ino;
 }

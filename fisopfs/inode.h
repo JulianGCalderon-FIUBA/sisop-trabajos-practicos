@@ -62,4 +62,9 @@ int get_inode_from_iid(superblock_t *superblock, int inode_id, inode_t **inode_d
  */
 ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t offset);
 
+/*
+ * DOES NOT Null terminate the buffer
+ */
+ssize_t inode_read(char *buffer, size_t bytes_to_read, inode_t *inode, size_t offset);
+
 #endif // INODE_H

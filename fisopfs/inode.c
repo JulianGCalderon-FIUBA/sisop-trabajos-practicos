@@ -186,7 +186,6 @@ ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file
 
 size_t min(size_t x, size_t y) {
 	return x < y ? x : y;
-
 }
 
 ssize_t inode_read(char *buffer, size_t ttl_bytes_to_read, inode_t *inode, size_t file_offset) {

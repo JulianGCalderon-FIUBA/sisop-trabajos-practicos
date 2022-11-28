@@ -5,9 +5,11 @@
 #include "inode.h"
 
 /*
- * Returns the dir_entry at offset within the dir directory.
+ * Returns the dir_entry at offset through the dir_entry_dest parameter.
+ * If offset points to EOF, dir_entry_dest->name[0] == '\0', and dir_entry_dest->inode_id == -1
+ * Upon error returns the error code.
  */
-dir_entry_t *read_directory(inode_t *dir, size_t offset);
+int read_directory(inode_t *dir, size_t offset, dir_entry_t *dir_entry_dest);
 
 /*
  * Sets the inode id inside the inode struct

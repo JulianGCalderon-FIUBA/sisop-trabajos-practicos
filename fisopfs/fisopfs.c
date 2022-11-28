@@ -42,16 +42,17 @@ static int fisopfs_readdir(const char *path, void *buffer, fuse_fill_dir_t fille
 
 	// get dir_entry inode
 	inode_t *dir_entry_inode;
-	dir_entry_t *dir_entry = read_directory(directory, offset);
+	dir_entry_t dir_entry;
+	read_directory(directory, offset, &dir_entry);
 	offset += sizeof(dir_entry_t);
-	while (dir_entry->name[0] != '\0') { // dir_entry is valid
-		assert(get_inode_from_iid(&superblock, dir_entry->inode_id, &dir_entry_inode) == EXIT_SUCCESS); // get dir_entry's inode
-		if ( filler(buffer, dir_entry->name, &dir_entry_inode->stats, offset) ) {
+	while (dir_entry.inode_id >= 0) { // dir_entry is valid
+		assert(get_inode_from_iid(&superblock, dir_entry.inode_id, &dir_entry_inode) == EXIT_SUCCESS); // get dir_entry's inode
+		if ( filler(buffer, dir_entry.name, &dir_entry_inode->stats, offset) ) {
 			printf("[debug] fisopfs_readdir: filler returned something other than 0\n");
 			return 1; // ERROR, filler's buffer is full
 		}
 
-		dir_entry = read_directory(directory, offset);
+		read_directory(directory, offset, &dir_entry);
 		offset += sizeof(dir_entry_t);
 	}
 
