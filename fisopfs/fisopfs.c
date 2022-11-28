@@ -87,8 +87,8 @@ static struct fuse_operations operations = {
 
 int main(int argc, char *argv[]) {
 	// init filesystem
-	bitmap_set_all_1(&superblock->free_tables_bitmap); // mark all tables as free/unused
+	bitmap_set_all_1(&superblock.free_tables_bitmap); // mark all tables as free/unused
 	// initialise root_dir
-	assert(create_dir(superblock, "/", ROOT_DIR_INODE_ID) == ROOT_DIR_INODE_ID);
+	assert(create_dir(&superblock, "/", ROOT_DIR_INODE_ID) == ROOT_DIR_INODE_ID);
 	return fuse_main(argc, argv, &operations, NULL);
 }

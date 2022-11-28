@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <sys/mman.h>
@@ -189,13 +190,13 @@ size_t min(size_t x, size_t y) {
 }
 
 ssize_t inode_read(char *buffer, size_t ttl_bytes_to_read, inode_t *inode, size_t file_offset) {
-	if (buffer_len == 0)
+	if (ttl_bytes_to_read == 0)
 		return 0;
 	if (file_offset > inode->stats.st_size)
 		return -EINVAL;
 	int cur_page_num = file_offset / PAGE_SIZE;
 	size_t page_offset = file_offset % PAGE_SIZE;
-	size_t ttl_bytes_to_read = min(ttl_bytes_to_read, inode->stats.st_size - file_offset);
+	ttl_bytes_to_read = min(ttl_bytes_to_read, inode->stats.st_size - file_offset);
 	size_t bytes_remaining = ttl_bytes_to_read;
 	size_t bytes_to_read;
 	char *page;
