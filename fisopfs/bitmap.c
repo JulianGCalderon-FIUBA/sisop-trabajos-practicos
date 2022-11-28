@@ -37,8 +37,8 @@ static uint64_t *get_bitmap64_by_pos(bitmap128_t *bitmap, int *pos) {
  */
 int bitmap_getbit(bitmap128_t *bitmap, int pos) {
 	uint64_t bitmap64 = *get_bitmap64_by_pos(bitmap, &pos);
-	uint64_t mask = ULLONG_MAX - 1; // 0xFF...Fe
-	return (int) mask & (bitmap64 >> (63 - pos));
+	uint64_t mask = ~(ULLONG_MAX - 1); // 0x00...01
+	return (int) (bitmap64 >> (63 - pos)) & mask;
 }
 
 /*
@@ -71,4 +71,20 @@ int bitmap_count_leading_zeros(bitmap128_t *bitmap) {
 		return __builtin_clzll(bitmap->bitmap64_1) + 64;
 	}
 	return -1;
+}
+
+/*
+ * Returns true if at least one bit is set to 1, else returns false
+ * Equivalent to !!bitmap
+ */
+bool bitmap_has_set_bit(bitmap128_t *bitmap) {
+	return bitmap->bitmap64_0 || bitmap->bitmap64_1;
+}
+
+/*
+ * Returns true if at least one bit is set to 0
+ * Equivalent to !!~bitmap
+ */
+bool bitmap_has_unset_bit(bitmap128_t *bitmap) {
+	return ~bitmap->bitmap64_0 || ~bitmap->bitmap64_1;
 }
