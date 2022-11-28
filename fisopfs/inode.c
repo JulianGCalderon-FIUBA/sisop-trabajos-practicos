@@ -31,6 +31,34 @@ int get_inode_from_iid(superblock_t *superblock, int inode_id, inode_t **inode_d
 }
 
 /*
+ * Returns the position of the table in superblock->inode_tables,
+ * or a negative error code upon failure.
+ */
+int malloc_inode_table(superblock_t *superblock) {
+	int free_table_num = bitmap_count_leading_zeros(&superblock->free_tables_bitmap);
+	if (free_table_num < 0) // The array superblock->inode_tables is full
+		return -ENOMEM;
+
+	inode_table_t *inode_table = mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+	if (inode_table == NULL)
+		return -ENOMEM;
+	bitmap_clearbit(&superblock->free_tables_bitmap, free_table_num);
+	superblock->inode_tables[free_table_num] = inode_table;
+	bitmap_set_all_0(&inode_table->free_inodes_bitmap);
+	for (int inode_pos = 0; inode_pos < INODES_PER_TABLE; ++inode_pos)
+		bitmap_setbit(&inode_table->free_inodes_bitmap, inode_pos);
+	return free_table_num;
+}
+
+/*
+ * 
+ */
+int free_inode_table(superblock_t *superblock, int table_num) {
+	bitmap_setbit(&superblock->free_tables_bitmap, table_num);
+	return munmap(superblock->inode_tables[table_num], PAGE_SIZE);
+}
+
+/*
  * Marks a free inode as occupied, and returns a pointer to the inode.
  * The inode stats are not initialised, except for the inode_id.
  * Does not request memory. If there are no free inodes, returns NULL.
@@ -65,24 +93,6 @@ inode_t *alloc_inode(superblock_t *superblock) {
 }
 
 /*
- * Returns the position of the table in superblock->inode_tables,
- * or a negative error code upon failure.
- */
-int malloc_inode_table(superblock_t *superblock) {
-	int free_table_num = bitmap_count_leading_zeros(&superblock->free_tables_bitmap);
-	if (free_table_num < 0) // The array superblock->inode_tables is full
-		return -ENOMEM;
-
-	inode_table_t *inode_table = mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
-	if (inode_table == NULL)
-		return -ENOMEM;
-	bitmap_clearbit(&superblock->free_tables_bitmap, free_table_num);
-	superblock->inode_tables[free_table_num] = inode_table;
-	bitmap_set_all_1(&inode_table->free_inodes_bitmap);
-	return free_table_num;
-}
-
-/*
  * Marks a free inode as occupied, and returns a pointer to the inode.
  * Upon failure, returns NULL.
  * The inode stats are not initialised, except for the inode_id.
@@ -107,14 +117,6 @@ inode_t *malloc_inode(superblock_t *superblock) {
 		inode_dest->pages[page_num] = NULL;
 	inode_dest->stats.st_size = 0;
 	return inode_dest;
-}
-
-/*
- * 
- */
-int free_inode_table(superblock_t *superblock, int table_num) {
-	bitmap_setbit(&superblock->free_tables_bitmap, table_num);
-	return munmap(superblock->inode_tables[table_num], PAGE_SIZE);
 }
 
 /*

@@ -8,9 +8,9 @@
 #define MAX_FILENAME_LENGTH 128
 #define PAGES_PER_INODE 5 // amount of pages of memory that a file can point to. Max file size = PAGE_SIZE * PAGES_PER_INODE
 #define PAGE_SIZE 4096 // must be a power of 2
-#define AMOUNT_OF_INODE_TABLES 128
+#define AMOUNT_OF_INODE_TABLES 128 // DO NOT TOUCH unless you are also changing the bitmap logic
 
-#define INODES_PER_TABLE (PAGE_SIZE - sizeof(bitmap128_t)) / sizeof(inode_t)
+#define INODES_PER_TABLE (PAGE_SIZE - sizeof(bitmap128_t)) / sizeof(inode_t) // MAX 128, unless bitmap logic is also changed
 #define DIR_ENTRIES_PER_PAGE PAGE_SIZE / sizeof(dir_entry_t) // must be at least 3
 
 typedef struct {
