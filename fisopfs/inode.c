@@ -26,7 +26,6 @@ int get_inode_from_iid(superblock_t *superblock, int inode_id, inode_t **inode_d
 		*inode_dest = NULL;
 		return ENOENT;
 	}
-
 	*inode_dest = &superblock->inode_tables[table_num]->inodes[inode_pos];
 	return EXIT_SUCCESS;
 }
@@ -70,12 +69,10 @@ inode_t *alloc_inode(superblock_t *superblock) {
 	int free_inode_id;
 	inode_table_t *table;
 	bitmap128_t *free_tables_bmap = &superblock->free_tables_bitmap;
-
 	for (int table_num = 0; table_num < (sizeof(bitmap128_t) * 8); ++table_num) {
 		is_table_free = bitmap_getbit(free_tables_bmap, table_num);
 		if (is_table_free) // table doesn't exist, it has not been allocated
 			continue;
-
 		table = superblock->inode_tables[table_num];
 		if (!bitmap_has_set_bit(&table->free_inodes_bitmap)) // there are no free inodes in the table
 			continue;
@@ -104,7 +101,7 @@ inode_t *malloc_inode(superblock_t *superblock) {
 	inode_t *inode_dest;
 	if ((inode_dest = alloc_inode(superblock)))
 		return inode_dest;
-	
+
 	// no free inodes, request memory
 	int table_num = malloc_inode_table(superblock);
 	if (table_num < 0) {

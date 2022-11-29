@@ -55,7 +55,8 @@ void bitmap_setbit(bitmap128_t *bitmap, int pos) {
  */
 void bitmap_clearbit(bitmap128_t *bitmap, int pos) {
 	uint64_t *bitmap64 = get_bitmap64_by_pos(bitmap, &pos);
-	uint64_t mask = 1 << (63 - pos);
+	uint64_t mask = 1;
+	mask <<= (63 - pos);
 	*bitmap64 &= ~ mask;
 }
 
@@ -64,12 +65,10 @@ void bitmap_clearbit(bitmap128_t *bitmap, int pos) {
  * Returns -1 if all bits are set to 0
  */
 int bitmap_count_leading_zeros(bitmap128_t *bitmap) {
-	if (bitmap->bitmap64_0 != 0) {
-		return __builtin_clzll(bitmap->bitmap64_0);
-	}
-	if (bitmap->bitmap64_1 != 0) {
-		return __builtin_clzll(bitmap->bitmap64_1) + 64;
-	}
+	if (bitmap->bitmap64_0 != 0)
+		return __builtin_clzl(bitmap->bitmap64_0);
+	if (bitmap->bitmap64_1 != 0)
+		return __builtin_clzl(bitmap->bitmap64_1) + 64;
 	return -1;
 }
 

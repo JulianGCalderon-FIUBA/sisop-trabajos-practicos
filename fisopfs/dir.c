@@ -130,10 +130,9 @@ int create_dir(superblock_t *superblock, const char *name, int parent_inode_id) 
 		free_inode(superblock, dir_inode_id);
 		return ret_val;
 	}
-
 	// increase parent's link count, and add self to parent's dir_entries
 	inode_t *parent_dir;
-	if (get_inode_from_iid(superblock, parent_inode_id, &parent_dir) != EXIT_SUCCESS
+	if (get_inode_from_iid(superblock, parent_inode_id, &parent_dir) == EXIT_SUCCESS
 		&& dir_inode_id != ROOT_DIR_INODE_ID) {
 			create_dir_entry(parent_dir, dir_inode_id, name);
 			++parent_dir->stats.st_nlink;

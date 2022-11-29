@@ -10,8 +10,8 @@
 #define PAGE_SIZE 4096 // must be a power of 2
 #define AMOUNT_OF_INODE_TABLES 128 // DO NOT TOUCH unless you are also changing the bitmap logic
 
-#define INODES_PER_TABLE (PAGE_SIZE - sizeof(bitmap128_t)) / sizeof(inode_t) // MAX 128, unless bitmap logic is also changed
-#define DIR_ENTRIES_PER_PAGE PAGE_SIZE / sizeof(dir_entry_t) // must be at least 3
+#define INODES_PER_TABLE ((PAGE_SIZE - sizeof(bitmap128_t)) / sizeof(inode_t)) // MAX 128, unless bitmap logic is also changed
+#define DIR_ENTRIES_PER_PAGE (PAGE_SIZE / sizeof(dir_entry_t)) // must be at least 3
 
 typedef struct {
 	char name[MAX_FILENAME_LENGTH];
