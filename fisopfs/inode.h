@@ -6,12 +6,17 @@
 #include "bitmap.h"
 
 #define MAX_FILENAME_LENGTH 128
-#define PAGES_PER_INODE 5 // amount of pages of memory that a file can point to. Max file size = PAGE_SIZE * PAGES_PER_INODE
-#define PAGE_SIZE 4096 // must be a power of 2
-#define AMOUNT_OF_INODE_TABLES 128 // DO NOT TOUCH unless you are also changing the bitmap logic
+#define PAGES_PER_INODE                                                        \
+	5  // amount of pages of memory that a file can point to. Max file size = PAGE_SIZE * PAGES_PER_INODE
+#define PAGE_SIZE 4096  // must be a power of 2
+#define AMOUNT_OF_INODE_TABLES                                                 \
+	128  // DO NOT TOUCH unless you are also changing the bitmap logic
 
-#define INODES_PER_TABLE ((PAGE_SIZE - sizeof(bitmap128_t)) / sizeof(inode_t)) // MAX 128, unless bitmap logic is also changed
-#define DIR_ENTRIES_PER_PAGE (PAGE_SIZE / sizeof(dir_entry_t)) // must be at least 3
+#define INODES_PER_TABLE                                                       \
+	((PAGE_SIZE - sizeof(bitmap128_t)) /                                   \
+	 sizeof(inode_t))  // MAX 128, unless bitmap logic is also changed
+#define DIR_ENTRIES_PER_PAGE                                                   \
+	(PAGE_SIZE / sizeof(dir_entry_t))  // must be at least 3
 
 typedef struct {
 	char name[MAX_FILENAME_LENGTH];
@@ -56,14 +61,15 @@ void free_inode(superblock_t *superblock, int inode_id);
 int get_inode_from_iid(superblock_t *superblock, int inode_id, inode_t **inode_dest);
 
 /*
- * 
- * 
+ *
+ *
  */
 ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t offset);
 
 /*
  * DOES NOT Null terminate the buffer
  */
-ssize_t inode_read(char *buffer, size_t bytes_to_read, inode_t *inode, size_t offset);
+ssize_t
+inode_read(char *buffer, size_t bytes_to_read, inode_t *inode, size_t offset);
 
-#endif // INODE_H
+#endif  // INODE_H
