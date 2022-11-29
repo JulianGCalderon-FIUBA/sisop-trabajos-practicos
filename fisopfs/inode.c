@@ -9,6 +9,9 @@
 #include "bitmap.h"
 #include "inode.h"
 
+
+#define ALL_PERMISSIONS (S_IRWXU | S_IRWXG | S_IRWXO)
+
 /*
  *
  */
@@ -86,8 +89,8 @@ alloc_inode(superblock_t *superblock)
 	int free_inode_id;
 	inode_table_t *table;
 	bitmap128_t *free_tables_bmap = &superblock->free_tables_bitmap;
-	for (int table_num = 0; table_num < (sizeof(bitmap128_t) * 8);
-	     ++table_num) {
+
+	for (int table_num = 0; table_num < AMOUNT_OF_INODE_TABLES; ++table_num) {
 		is_table_free = bitmap_getbit(free_tables_bmap, table_num);
 		if (is_table_free)  // table doesn't exist, it has not been allocated
 			continue;
@@ -95,21 +98,21 @@ alloc_inode(superblock_t *superblock)
 		if (!bitmap_has_set_bit(
 		            &table->free_inodes_bitmap))  // there are no free inodes in the table
 			continue;
+
 		free_inode_id = bitmap_count_leading_zeros(
 		        &table->free_inodes_bitmap);  // first free inode in table
 		bitmap_clearbit(&table->free_inodes_bitmap,
 		                free_inode_id);  // set inode as occupied
+
 		inode_dest = &table->inodes[free_inode_id];
-		inode_dest->stats.st_ino =
-		        table_num * INODES_PER_TABLE + free_inode_id;
-		break;
+
+		init_inode(inode_dest,
+		           table_num * INODES_PER_TABLE + free_inode_id);
+
+		return inode_dest;
 	}
-	if (!inode_dest)
-		return NULL;
-	for (int page_num = 0; page_num < PAGES_PER_INODE; ++page_num)
-		inode_dest->pages[page_num] = NULL;
-	inode_dest->stats.st_size = 0;
-	return inode_dest;
+
+	return NULL;
 }
 
 /*
@@ -132,13 +135,12 @@ malloc_inode(superblock_t *superblock)
 		return NULL;
 	}
 	table = superblock->inode_tables[table_num];
-	bitmap_clearbit(&table->free_inodes_bitmap,
-	                0);  // set first inode as occupied
-	inode_dest = &table->inodes[0];
-	inode_dest->stats.st_ino = table_num * INODES_PER_TABLE;
-	for (int page_num = 0; page_num < PAGES_PER_INODE; ++page_num)
-		inode_dest->pages[page_num] = NULL;
-	inode_dest->stats.st_size = 0;
+
+	// there are no alloc'd inodes in the table
+	bitmap_clearbit(&table->free_inodes_bitmap, 0);
+
+	init_inode(inode_dest, table_num * INODES_PER_TABLE);
+
 	return inode_dest;
 }
 
@@ -153,12 +155,11 @@ free_inode(superblock_t *superblock, int inode_id)
 	int inode_pos = inode_id % INODES_PER_TABLE;
 	bitmap_setbit(&superblock->inode_tables[table_num]->free_inodes_bitmap,
 	              inode_pos);
-	if (bitmap_has_unset_bit(
-	            &superblock->inode_tables[table_num]->free_inodes_bitmap))
-		return;
 
-	// there are no alloc'd inodes in the table
-	free_inode_table(superblock, table_num);
+	// if last inode from table, free table
+	if (!bitmap_has_unset_bit(
+	            &superblock->inode_tables[table_num]->free_inodes_bitmap))
+		free_inode_table(superblock, table_num);
 }
 
 int
@@ -166,6 +167,7 @@ malloc_inode_page(inode_t *inode, int page_num)
 {
 	if (page_num > PAGES_PER_INODE)
 		return EFBIG;
+
 	char *page = mmap(NULL,
 	                  PAGE_SIZE,
 	                  PROT_READ | PROT_WRITE,
@@ -175,6 +177,7 @@ malloc_inode_page(inode_t *inode, int page_num)
 	if (page == NULL)
 		return ENOMEM;
 	inode->pages[page_num] = page;
+	inode->stats.st_blocks++;
 	return EXIT_SUCCESS;
 }
 
@@ -182,6 +185,12 @@ size_t
 min(size_t x, size_t y)
 {
 	return x < y ? x : y;
+}
+
+size_t
+max(size_t x, size_t y)
+{
+	return x > y ? x : y;
 }
 
 ssize_t
@@ -226,11 +235,11 @@ inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 			break;
 		page = inode->pages[cur_page_num];
 	}
-	file_offset +=
-	        buffer_len - bytes_remaining;  // initial offset + bytes written
-	inode->stats.st_size = inode->stats.st_size > file_offset
-	                               ? inode->stats.st_size
-	                               : file_offset;
+
+	// initial offset + bytes written
+	file_offset += buffer_len - bytes_remaining;
+	inode->stats.st_size = max(inode->stats.st_size, file_offset);
+
 	return buffer_len - bytes_remaining;
 }
 
@@ -256,7 +265,33 @@ inode_read(char *buffer, size_t ttl_bytes_to_read, inode_t *inode, size_t file_o
 		bytes_remaining -= bytes_to_read;
 		++cur_page_num;
 		page_offset = 0;
-		page = NULL;
 	}
+
 	return ttl_bytes_to_read - bytes_remaining;
+}
+
+void
+init_inode(inode_t *inode, int inode_id)
+{
+	// set stats
+	struct stat *inode_st = &inode->stats;
+
+	inode_st->st_nlink = 1;
+	// podríamos usar umask para ver los default
+	inode_st->st_mode = ALL_PERMISSIONS;
+	inode_st->st_blocks = 0;
+	inode_st->st_ino = inode_id;
+	inode_st->st_size = 0;
+
+	// CORREGIR: deberíamos setearlo al usuario actual (getcuruid? algo así)
+	inode_st->st_uid = 1000;
+	// CORREGIR: deberíamos setearlo al grupo actual
+	inode_st->st_gid = 1000;
+
+	time(&inode_st->st_mtime);
+	time(&inode_st->st_ctime);
+	time(&inode_st->st_atime);
+
+	for (int page_num = 0; page_num < PAGES_PER_INODE; ++page_num)
+		inode->pages[page_num] = NULL;
 }

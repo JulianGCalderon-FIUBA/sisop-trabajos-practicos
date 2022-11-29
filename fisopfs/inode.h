@@ -72,4 +72,9 @@ ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t offs
 ssize_t
 inode_read(char *buffer, size_t bytes_to_read, inode_t *inode, size_t offset);
 
+/*
+ * Initialises inode with default values
+ */
+void init_inode(inode_t *inode, int inode_id);
+
 #endif  // INODE_H

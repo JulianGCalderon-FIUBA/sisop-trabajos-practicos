@@ -109,6 +109,7 @@ create_dir_entry(inode_t *parent_dir, int entry_inode_id, const char *name)
 	                              sizeof(dir_entry_t),
 	                              parent_dir,
 	                              parent_dir->stats.st_size);
+
 	return ret_val > 0 ? EXIT_SUCCESS : ret_val;
 }
 
@@ -119,26 +120,21 @@ create_dir_entry(inode_t *parent_dir, int entry_inode_id, const char *name)
 int
 init_dir(inode_t *dir, int inode_id, int parent_inode_id)
 {
+	init_inode(dir, inode_id);
+
 	// set stats
 	struct stat *dir_st = &dir->stats;
-	dir_st->st_nlink = 2;  // one from parent and another one from '.'
-	dir_st->st_mode =
-	        S_IFDIR |
-	        ALL_PERMISSIONS;  // podríamos usar umask para ver los default
-	dir_st->st_uid =
-	        1000;  // CORREGIR: deberíamos setearlo al usuario actual (getcuruid? algo así)
-	dir_st->st_gid = 1000;  // CORREGIR: deberíamos setearlo al grupo actual
-	time(&dir_st->st_mtime);
-	time(&dir_st->st_ctime);
-	time(&dir_st->st_atime);
-	dir_st->st_blocks = 1;
+	// one from parent and another one from '.'
+	dir_st->st_nlink = 2;
+	// podríamos usar umask para ver los default
+	dir_st->st_mode = S_IFDIR | ALL_PERMISSIONS;
 
 	// set dir_entries
 	int ret_val = create_dir_entry(dir, inode_id, ".");
 	if (ret_val != EXIT_SUCCESS)
 		return ret_val;
-	ret_val = create_dir_entry(dir, parent_inode_id, "..");
-	return ret_val;
+
+	return create_dir_entry(dir, parent_inode_id, "..");
 }
 
 /*
