@@ -185,16 +185,17 @@ inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 		return 0;
 	int cur_page_num = file_offset / PAGE_SIZE;
 
-	// if no bytes have been written, return ERROR CODE upon error
+	// if file is already at max size, return EFBIG error
 	if (inode->stats.st_size >= PAGE_SIZE * PAGES_PER_INODE)
-		return -EFBIG;  // "File too large" not very specific but better than ENOMEM
+		return -EFBIG;
+	// if offset is bigger than size, return EINVAL error
 	if (file_offset > inode->stats.st_size)
 		return -EINVAL;
-	int ret_val;
-	if (inode->pages[cur_page_num] ==
-	    NULL) {  // may happen if prev page is full, or this is the first page
-		if ((ret_val = malloc_inode_page(inode, cur_page_num)) !=
-		    EXIT_SUCCESS)
+
+	// may happen if prev page is full, or this is the first page
+	if (inode->pages[cur_page_num] == NULL) {
+		int ret_val = malloc_inode_page(inode, cur_page_num);
+		if (ret_val != EXIT_SUCCESS)
 			return -ret_val;
 	}
 
@@ -204,8 +205,8 @@ inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 	size_t page_offset = file_offset % PAGE_SIZE;
 	char *page = inode->pages[cur_page_num];
 	while (bytes_remaining > 0) {
-		if (page ==
-		    NULL) {  // may happen if prev page is full, or this is the first page
+		// may happen if prev page is full, or this is the first page
+		if (page == NULL) {
 			if (malloc_inode_page(inode, cur_page_num) != EXIT_SUCCESS)
 				break;
 			page = inode->pages[cur_page_num];
