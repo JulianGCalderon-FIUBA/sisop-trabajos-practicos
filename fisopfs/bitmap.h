@@ -52,4 +52,4 @@ bool bitmap_has_set_bit(bitmap128_t *bitmap);
  */
 bool bitmap_has_unset_bit(bitmap128_t *bitmap);
 
-#endif // BITMAP_H
+#endif  // BITMAP_H
