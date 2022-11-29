@@ -128,7 +128,6 @@ init_dir(inode_t *dir, int inode_id, int parent_inode_id)
 	dir_st->st_uid =
 	        1000;  // CORREGIR: deberíamos setearlo al usuario actual (getcuruid? algo así)
 	dir_st->st_gid = 1000;  // CORREGIR: deberíamos setearlo al grupo actual
-	time(&dir->stat_crtime);
 	time(&dir_st->st_mtime);
 	time(&dir_st->st_ctime);
 	time(&dir_st->st_atime);

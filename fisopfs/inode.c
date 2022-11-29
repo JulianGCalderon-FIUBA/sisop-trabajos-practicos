@@ -19,12 +19,14 @@ get_inode_from_iid(superblock_t *superblock, int inode_id, inode_t **inode_dest)
 		return EINVAL;
 
 	int table_num = inode_id / INODES_PER_TABLE;
-	if (bitmap_getbit(&superblock->free_tables_bitmap, table_num)) { // table is free and therefore empty 
+	if (bitmap_getbit(&superblock->free_tables_bitmap,
+	                  table_num)) {  // table is free and therefore empty
 		*inode_dest = NULL;
 		return ENOENT;
 	}
 	int inode_pos = inode_id % INODES_PER_TABLE;
-	if (bitmap_getbit(&superblock->inode_tables[table_num]->free_inodes_bitmap, inode_pos)) { // inode is free
+	if (bitmap_getbit(&superblock->inode_tables[table_num]->free_inodes_bitmap,
+	                  inode_pos)) {  // inode is free
 		*inode_dest = NULL;
 		return ENOENT;
 	}

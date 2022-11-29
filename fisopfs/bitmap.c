@@ -57,7 +57,7 @@ bitmap_setbit(bitmap128_t *bitmap, int pos)
 {
 	uint64_t *bitmap64 = get_bitmap64_by_pos(bitmap, &pos);
 	uint64_t mask = 1;
-	uint64_t mask <<= (63 - pos);
+	mask <<= (63 - pos);
 	*bitmap64 |= mask;
 }
 
