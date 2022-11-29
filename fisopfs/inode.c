@@ -17,12 +17,12 @@ int get_inode_from_iid(superblock_t *superblock, int inode_id, inode_t **inode_d
 		return EINVAL;
 
 	int table_num = inode_id / INODES_PER_TABLE;
-	if (bitmap_getbit(&superblock->free_tables_bitmap, table_num) != 0) { // table is free and therefore empty 
+	if (bitmap_getbit(&superblock->free_tables_bitmap, table_num)) { // table is free and therefore empty 
 		*inode_dest = NULL;
 		return ENOENT;
 	}
 	int inode_pos = inode_id % INODES_PER_TABLE;
-	if (bitmap_getbit(&superblock->inode_tables[table_num]->free_inodes_bitmap, inode_pos) != 0) { // inode is free
+	if (bitmap_getbit(&superblock->inode_tables[table_num]->free_inodes_bitmap, inode_pos)) { // inode is free
 		*inode_dest = NULL;
 		return ENOENT;
 	}
@@ -142,6 +142,10 @@ int malloc_inode_page(inode_t *inode, int page_num) {
 	return EXIT_SUCCESS;
 }
 
+size_t min(size_t x, size_t y) {
+	return x < y ? x : y;
+}
+
 ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset) {
 	if (buffer_len == 0)
 		return 0;
@@ -169,20 +173,18 @@ ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file
 				break;
 			page = inode->pages[cur_page_num];
 		}
-		bytes_to_write = bytes_remaining <= PAGE_SIZE - page_offset ? bytes_remaining : PAGE_SIZE - page_offset;
+		bytes_to_write = min(bytes_remaining, PAGE_SIZE - page_offset);
 		memcpy(page + page_offset, buffer, bytes_to_write);
 		bytes_remaining -= bytes_to_write;
 		++cur_page_num;
 		page_offset = 0;
-		page = NULL;
+		if (cur_page_num >= PAGES_PER_INODE)
+			break;
+		page = inode->pages[cur_page_num];
 	}
 	file_offset += buffer_len - bytes_remaining; // initial offset + bytes written
 	inode->stats.st_size = inode->stats.st_size > file_offset ? inode->stats.st_size : file_offset;
 	return buffer_len - bytes_remaining;
-}
-
-size_t min(size_t x, size_t y) {
-	return x < y ? x : y;
 }
 
 ssize_t inode_read(char *buffer, size_t ttl_bytes_to_read, inode_t *inode, size_t file_offset) {

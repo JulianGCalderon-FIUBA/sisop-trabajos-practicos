@@ -20,7 +20,6 @@ typedef struct {
 
 typedef struct {
 	struct stat stats;
-	time_t stat_crtime;
 	char *pages[PAGES_PER_INODE];
 } inode_t;
 
