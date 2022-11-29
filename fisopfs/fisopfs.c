@@ -94,8 +94,9 @@ fisopfs_unlink(const char *path)
 	char *childs_name = split_path(path, parent_dir_path);
 	int dir_id = get_iid_from_path(&superblock, parent_dir_path);
 	inode_t *dir;
-	if (get_inode_from_iid(&superblock, dir_id, &dir) != 0)
+	if (get_inode_from_iid(&superblock, dir_id, &dir) != 0) {
 		return ENOENT;
+	}
 	return unlink_dir_entry(&superblock, dir, childs_name);
 }
 

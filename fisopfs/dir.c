@@ -17,7 +17,7 @@ char *split_path(const char *path, char *parent_dir_path) {
 	char *last_slash_pos = strrchr(path, '/');
 	// strncpy so that parent_dir_path contains the trailling slash
 	memcpy(parent_dir_path, path, last_slash_pos - path + 1);
-	parent_dir_path[last_slash_pos - path + 2] = '\0';
+	parent_dir_path[last_slash_pos - path + 1] = '\0';
 	return last_slash_pos + 1;
 }
 
@@ -68,7 +68,7 @@ _get_iid_from_path(superblock_t *superblock, inode_t *dir, char *path)
 			read_directory(dir, offset, &dir_entry);
 			continue;
 		}
-		if (end_of_path)  // end of path, file or dir was found
+		if (end_of_path) // end of path, file or dir was found
 			return dir_entry.inode_id;
 
 		// expecting a dir to continue the search
