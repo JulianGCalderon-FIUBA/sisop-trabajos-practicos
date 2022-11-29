@@ -58,11 +58,15 @@ malloc_inode_table(superblock_t *superblock)
 	                                  0);
 	if (inode_table == NULL)
 		return -ENOMEM;
+
 	bitmap_clearbit(&superblock->free_tables_bitmap, free_table_num);
+
 	superblock->inode_tables[free_table_num] = inode_table;
 	bitmap_set_all_0(&inode_table->free_inodes_bitmap);
+
 	for (int inode_pos = 0; inode_pos < INODES_PER_TABLE; ++inode_pos)
 		bitmap_setbit(&inode_table->free_inodes_bitmap, inode_pos);
+
 	return free_table_num;
 }
 

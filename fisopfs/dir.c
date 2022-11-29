@@ -105,6 +105,10 @@ create_dir_entry(inode_t *parent_dir, int entry_inode_id, const char *name)
 {
 	dir_entry_t dir_entry = { .inode_id = entry_inode_id };
 	strcpy(dir_entry.name, name);
+	// cambiar a:
+	// dir_entry_t dir_entry;
+	// init_link(&dir_entry, entry_inode_id, name);
+
 	ssize_t ret_val = inode_write((char *) &dir_entry,
 	                              sizeof(dir_entry_t),
 	                              parent_dir,
@@ -146,6 +150,7 @@ create_dir(superblock_t *superblock, const char *name, int parent_inode_id)
 	inode_t *dir = malloc_inode(superblock);
 	if (!dir)
 		return ENOMEM;
+
 	int dir_inode_id = dir->stats.st_ino;
 	int ret_val = init_dir(dir, dir_inode_id, parent_inode_id);
 	if (ret_val != EXIT_SUCCESS) {
@@ -154,11 +159,14 @@ create_dir(superblock_t *superblock, const char *name, int parent_inode_id)
 	}
 	// increase parent's link count, and add self to parent's dir_entries
 	inode_t *parent_dir;
+
+
 	if (get_inode_from_iid(superblock, parent_inode_id, &parent_dir) ==
 	            EXIT_SUCCESS &&
 	    dir_inode_id != ROOT_DIR_INODE_ID) {
 		create_dir_entry(parent_dir, dir_inode_id, name);
 		++parent_dir->stats.st_nlink;
 	}
+
 	return dir->stats.st_ino;
 }
