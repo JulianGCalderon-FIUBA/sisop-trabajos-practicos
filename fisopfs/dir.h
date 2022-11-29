@@ -16,11 +16,23 @@ int read_directory(inode_t *dir, size_t offset, dir_entry_t *dir_entry_dest);
  */
 int create_dir(superblock_t *superblock,
                const char *name,
-               int parent_inode_id);  // consider changing name + parent_id -> path
+               int parent_inode_id, mode_t mode);
 
 /*
  *
  */
 int get_iid_from_path(superblock_t *superblock, const char *path);
+
+/*
+ *
+ */
+int unlink_dir_entry(superblock_t *superblock, inode_t *dir, const char *name);
+
+/*
+ * Splits the path on the last forward slash.
+ * Writes parent's dir path (including trailing slash) in the argument,
+ * and returns pointer to the character that followed the last slash (the child's name)
+ */
+char *split_path(const char *path, char *parent_dir_path);
 
 #endif  // DIR_H

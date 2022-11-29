@@ -16,6 +16,7 @@
 #include "dir.h"
 
 superblock_t superblock;
+#define ALL_PERMISSIONS (S_IRWXU | S_IRWXG | S_IRWXO)
 
 static int
 fisopfs_getattr(const char *path, struct stat *st)
@@ -76,19 +77,33 @@ fisopfs_mkdir(const char *path, mode_t mode)
 {
 	printf("[debug] fisopfs_mkdir(%s)\n", path);
 	char parent_dir_path[PATH_MAX];
-	char dir_name[MAX_FILENAME_LENGTH];
-	char *last_slash_pos = strrchr(path, '/');
-	// strncpy so that parent_dir_path contains the trailling slash
-	memcpy(parent_dir_path, path, last_slash_pos - path + 1);
-	parent_dir_path[last_slash_pos - path + 2] = '\0';
-	// new_dir's name does not contain slashes
-	strcpy(dir_name, last_slash_pos + 1);
+	char *new_dirs_name = split_path(path, parent_dir_path);
 	int inode_id = get_iid_from_path(&superblock, parent_dir_path);
 	if (inode_id < 0) {
 		return -1;
 	}
-	return create_dir(&superblock, dir_name, inode_id) <
+	return create_dir(&superblock, new_dirs_name, inode_id, mode) <
 	       0;  // returns 0 if create_dir succeeds
+}
+
+static int
+fisopfs_unlink(const char *path)
+{
+	printf("[debug] fisopfs_unlink(%s)\n", path);
+	char parent_dir_path[PATH_MAX];
+	char *childs_name = split_path(path, parent_dir_path);
+	int dir_id = get_iid_from_path(&superblock, parent_dir_path);
+	inode_t *dir;
+	if (get_inode_from_iid(&superblock, dir_id, &dir) != 0)
+		return ENOENT;
+	return unlink_dir_entry(&superblock, dir, childs_name);
+}
+
+static int
+fisopfs_rmdir(const char *path)
+{
+	printf("[debug] fisopfs_rmdir(%s)\n", path);
+	return fisopfs_unlink(path);
 }
 
 #define MAX_CONTENIDO
@@ -121,6 +136,8 @@ static struct fuse_operations operations = {
 	.getattr = fisopfs_getattr,
 	.readdir = fisopfs_readdir,
 	.mkdir = fisopfs_mkdir,
+	.rmdir = fisopfs_rmdir,
+	.unlink = fisopfs_unlink,
 	.read = fisopfs_read,
 };
 
@@ -131,18 +148,12 @@ main(int argc, char *argv[])
 	bitmap_set_all_1(
 	        &superblock.free_tables_bitmap);  // mark all tables as free/unused
 	// initialise root_dir
-	create_dir(&superblock, "/", ROOT_DIR_INODE_ID);
+	create_dir(&superblock, "/", ROOT_DIR_INODE_ID, ALL_PERMISSIONS);
 	return fuse_main(argc, argv, &operations, NULL);
 }
 
 // fuse operations que probablemente haya que implementar:
 // struct fuse_operations {
-
-/** Remove a file */
-//	int (*unlink) (const char *);
-
-/** Remove a directory */
-//	int (*rmdir) (const char *);
 
 /** Rename a file */
 //	int (*rename) (const char *, const char *);

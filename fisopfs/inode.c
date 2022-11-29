@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
+#include <time.h>
 #include <errno.h>
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -80,6 +80,62 @@ free_inode_table(superblock_t *superblock, int table_num)
 	return munmap(superblock->inode_tables[table_num], PAGE_SIZE);
 }
 
+int
+malloc_inode_page(inode_t *inode, int page_num)
+{
+	if (page_num > PAGES_PER_INODE)
+		return EFBIG;
+
+	char *page = mmap(NULL,
+	                  PAGE_SIZE,
+	                  PROT_READ | PROT_WRITE,
+	                  MAP_ANON | MAP_PRIVATE,
+	                  -1,
+	                  0);
+	if (page == NULL)
+		return ENOMEM;
+	inode->pages[page_num] = page;
+	inode->stats.st_blocks++;
+	return EXIT_SUCCESS;
+}
+
+int
+free_inode_page(inode_t *inode, int page_num)
+{
+	char *page = inode->pages[page_num];
+	if (!page)
+		return EXIT_SUCCESS;
+	inode->pages[page_num] = NULL;
+	--inode->stats.st_blocks;
+	return munmap(page, PAGE_SIZE);
+}
+
+void
+init_inode(inode_t *inode, int inode_id)
+{
+	// set stats
+	struct stat *inode_st = &inode->stats;
+
+	inode_st->st_nlink = 1;
+	// podríamos usar umask para ver los default
+	inode_st->st_mode = ALL_PERMISSIONS;
+	inode_st->st_blocks = 0;
+	inode_st->st_ino = inode_id;
+	inode_st->st_size = 0;
+	
+	// CORREGIR: deberíamos setearlo al usuario actual (getcuruid? algo así)
+	inode_st->st_uid = 1000;
+	// CORREGIR: deberíamos setearlo al grupo actual
+	inode_st->st_gid = 1000;
+	
+	time(&inode_st->st_mtime);
+	time(&inode_st->st_ctime);
+	time(&inode_st->st_atime);
+	
+	for (int page_num = 0; page_num < PAGES_PER_INODE; ++page_num)
+		inode->pages[page_num] = NULL;
+}
+
 /*
  * Marks a free inode as occupied, and returns a pointer to the inode.
  * The inode stats are not initialised, except for the inode_id.
@@ -139,12 +195,11 @@ malloc_inode(superblock_t *superblock)
 		return NULL;
 	}
 	table = superblock->inode_tables[table_num];
+	inode_dest = &table->inodes[0];
 
 	// there are no alloc'd inodes in the table
 	bitmap_clearbit(&table->free_inodes_bitmap, 0);
-
 	init_inode(inode_dest, table_num * INODES_PER_TABLE);
-
 	return inode_dest;
 }
 
@@ -155,34 +210,22 @@ malloc_inode(superblock_t *superblock)
 void
 free_inode(superblock_t *superblock, int inode_id)
 {
+	// free inode internal pages
+	inode_t *inode;
+	get_inode_from_iid(superblock, inode_id, &inode);
+	for (int page_num = 0; page_num < PAGES_PER_INODE; ++page_num)
+		free_inode_page(inode, page_num);
+
+	// mark inode as free
 	int table_num = inode_id / INODES_PER_TABLE;
 	int inode_pos = inode_id % INODES_PER_TABLE;
 	bitmap_setbit(&superblock->inode_tables[table_num]->free_inodes_bitmap,
 	              inode_pos);
 
-	// if last inode from table, free table
+	// if it is the last inode in a table, free the table
 	if (!bitmap_has_unset_bit(
 	            &superblock->inode_tables[table_num]->free_inodes_bitmap))
 		free_inode_table(superblock, table_num);
-}
-
-int
-malloc_inode_page(inode_t *inode, int page_num)
-{
-	if (page_num > PAGES_PER_INODE)
-		return EFBIG;
-
-	char *page = mmap(NULL,
-	                  PAGE_SIZE,
-	                  PROT_READ | PROT_WRITE,
-	                  MAP_ANON | MAP_PRIVATE,
-	                  -1,
-	                  0);
-	if (page == NULL)
-		return ENOMEM;
-	inode->pages[page_num] = page;
-	inode->stats.st_blocks++;
-	return EXIT_SUCCESS;
 }
 
 size_t
@@ -195,6 +238,33 @@ size_t
 max(size_t x, size_t y)
 {
 	return x > y ? x : y;
+}
+
+ssize_t
+inode_read(char *buffer, size_t ttl_bytes_to_read, inode_t *inode, size_t file_offset)
+{
+	if (ttl_bytes_to_read == 0)
+		return 0;
+	if (file_offset > inode->stats.st_size)
+		return -EINVAL;
+	int cur_page_num = file_offset / PAGE_SIZE;
+	size_t page_offset = file_offset % PAGE_SIZE;
+	ttl_bytes_to_read =
+	        min(ttl_bytes_to_read, inode->stats.st_size - file_offset);
+	size_t bytes_remaining = ttl_bytes_to_read;
+	size_t bytes_to_read;
+	char *page;
+	// read one page at a time, and return amount of bytes read
+	while (bytes_remaining > 0) {
+		page = inode->pages[cur_page_num];
+		bytes_to_read = min(bytes_remaining, PAGE_SIZE - page_offset);
+		memcpy(buffer, page + page_offset, bytes_to_read);
+		bytes_remaining -= bytes_to_read;
+		++cur_page_num;
+		page_offset = 0;
+	}
+
+	return ttl_bytes_to_read - bytes_remaining;
 }
 
 ssize_t
@@ -247,55 +317,19 @@ inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 	return buffer_len - bytes_remaining;
 }
 
-ssize_t
-inode_read(char *buffer, size_t ttl_bytes_to_read, inode_t *inode, size_t file_offset)
-{
-	if (ttl_bytes_to_read == 0)
-		return 0;
-	if (file_offset > inode->stats.st_size)
-		return -EINVAL;
-	int cur_page_num = file_offset / PAGE_SIZE;
-	size_t page_offset = file_offset % PAGE_SIZE;
-	ttl_bytes_to_read =
-	        min(ttl_bytes_to_read, inode->stats.st_size - file_offset);
-	size_t bytes_remaining = ttl_bytes_to_read;
-	size_t bytes_to_read;
-	char *page;
-	// read one page at a time, and return amount of bytes read
-	while (bytes_remaining > 0) {
-		page = inode->pages[cur_page_num];
-		bytes_to_read = min(bytes_remaining, PAGE_SIZE - page_offset);
-		memcpy(buffer, page + page_offset, bytes_to_read);
-		bytes_remaining -= bytes_to_read;
-		++cur_page_num;
-		page_offset = 0;
+/*
+ * Removes `tail_size` bytes from the end of the file, decreasing its size.
+ */
+void inode_remove_tail(size_t tail_size, inode_t *inode) {
+	if (inode->stats.st_size == 0 || tail_size == 0)
+		return;
+	tail_size = min(tail_size, inode->stats.st_size);
+	int highest_page_num = (inode->stats.st_size - 1) / PAGES_PER_INODE;
+	inode->stats.st_size -= tail_size;
+	int new_highest_page_num = (inode->stats.st_size - 1) / PAGES_PER_INODE;
+
+	// free pages if necessary
+	for (int page_num = new_highest_page_num + 1; page_num <= highest_page_num; ++page_num) {
+		free_inode_page(inode, page_num);
 	}
-
-	return ttl_bytes_to_read - bytes_remaining;
-}
-
-void
-init_inode(inode_t *inode, int inode_id)
-{
-	// set stats
-	struct stat *inode_st = &inode->stats;
-
-	inode_st->st_nlink = 1;
-	// podríamos usar umask para ver los default
-	inode_st->st_mode = ALL_PERMISSIONS;
-	inode_st->st_blocks = 0;
-	inode_st->st_ino = inode_id;
-	inode_st->st_size = 0;
-
-	// CORREGIR: deberíamos setearlo al usuario actual (getcuruid? algo así)
-	inode_st->st_uid = 1000;
-	// CORREGIR: deberíamos setearlo al grupo actual
-	inode_st->st_gid = 1000;
-
-	time(&inode_st->st_mtime);
-	time(&inode_st->st_ctime);
-	time(&inode_st->st_atime);
-
-	for (int page_num = 0; page_num < PAGES_PER_INODE; ++page_num)
-		inode->pages[page_num] = NULL;
 }
