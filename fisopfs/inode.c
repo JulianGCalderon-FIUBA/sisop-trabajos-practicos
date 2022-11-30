@@ -318,14 +318,15 @@ inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 }
 
 /*
- * Removes `tail_size` bytes from the end of the file, decreasing its size.
+ * Inode changes size to min(inode.stats.st_size, offset)
+ * Bytes at the end of the file are removed
  */
-void inode_remove_tail(size_t tail_size, inode_t *inode) {
-	if (inode->stats.st_size == 0 || tail_size == 0)
+void inode_truncate(inode_t *inode, size_t offset) {
+	if (inode->stats.st_size == 0 || offset == 0)
 		return;
-	tail_size = min(tail_size, inode->stats.st_size);
+	offset = min(offset, inode->stats.st_size);
 	int highest_page_num = (inode->stats.st_size - 1) / PAGES_PER_INODE;
-	inode->stats.st_size -= tail_size;
+	inode->stats.st_size -= offset;
 	int new_highest_page_num = (inode->stats.st_size - 1) / PAGES_PER_INODE;
 
 	// free pages if necessary

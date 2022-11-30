@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <linux/limits.h>
 #include "inode.h"
@@ -152,7 +152,7 @@ unlink_dir_entry(superblock_t *superblock, inode_t *dir, const char *name)
 			dir->stats.st_size - sizeof(dir_entry_t));
 
 	// delete last dir_entry
-	inode_remove_tail(sizeof(dir_entry_t), dir);
+	inode_truncate(dir, sizeof(dir_entry_t));
 	// free inode
 	free_inode(superblock, deleted_dir_entry.inode_id);
 	return EXIT_SUCCESS;
@@ -165,22 +165,15 @@ unlink_dir_entry(superblock_t *superblock, inode_t *dir, const char *name)
 int
 init_dir(inode_t *dir, int parent_inode_id, mode_t mode)
 {
-	int inode_id = dir->stats.st_ino;
-	init_inode(dir, inode_id);
-
-	// set stats
-	struct stat *dir_st = &dir->stats;
-	// one from parent and another one from '.'
-	dir_st->st_nlink = 2;
-	// podríamos usar umask para ver los default
-	dir_st->st_mode = S_IFDIR | mode;
-
+	// one link from parent and another one from '.'
+	dir->stats.st_nlink = 2;
+	dir->stats.st_mode = S_IFDIR | mode;
 	// set dir_entries
-	int ret_val = create_dir_entry(dir, inode_id, ".");
+	int ret_val = create_dir_entry(dir, dir->stats.st_ino, ".");
 	if (ret_val != EXIT_SUCCESS)
 		return ret_val;
 
-	return create_dir_entry(dir, parent_inode_id, "..");
+	return create_dir_entry(dir, dir->stats.st_ino, "..");
 }
 
 /*

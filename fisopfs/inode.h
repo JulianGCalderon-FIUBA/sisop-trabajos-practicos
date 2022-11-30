@@ -2,6 +2,7 @@
 #define INODE_H
 
 #include <stdint.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include "bitmap.h"
 
@@ -73,9 +74,10 @@ ssize_t
 inode_read(char *buffer, size_t bytes_to_read, inode_t *inode, size_t offset);
 
 /*
- * Removes `tail_size` bytes from the end of the file, decreasing its size
+ * Inode changes size to min(inode.stats.st_size, offset)
+ * Bytes at the end of the file are removed
  */
-void inode_remove_tail(size_t tail_size, inode_t *inode);
+void inode_truncate(inode_t *inode, size_t offset);
 
 /*
  * Initialises inode with default values

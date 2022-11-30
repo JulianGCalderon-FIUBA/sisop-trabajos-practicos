@@ -2,6 +2,7 @@
 #define DIR_H
 
 #define ROOT_DIR_INODE_ID 0
+#include <sys/types.h>
 #include "inode.h"
 
 /*
@@ -18,8 +19,15 @@ int create_dir(superblock_t *superblock,
                const char *name,
                int parent_inode_id, mode_t mode);
 
+
 /*
- *
+ * ret_val is negative upon error
+ */
+int
+create_dir_entry(inode_t *parent_dir, int entry_inode_id, const char *name);
+
+/*
+ * Returns negative value upon failure
  */
 int get_iid_from_path(superblock_t *superblock, const char *path);
 

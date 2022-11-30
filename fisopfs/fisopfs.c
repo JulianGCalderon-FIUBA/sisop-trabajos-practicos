@@ -13,6 +13,7 @@
 #include <linux/limits.h>
 #include "bitmap.h"
 #include "inode.h"
+#include "file.h"
 #include "dir.h"
 
 superblock_t superblock;
@@ -94,7 +95,7 @@ fisopfs_unlink(const char *path)
 	char *childs_name = split_path(path, parent_dir_path);
 	int dir_id = get_iid_from_path(&superblock, parent_dir_path);
 	inode_t *dir;
-	if (get_inode_from_iid(&superblock, dir_id, &dir) != 0) {
+	if (get_inode_from_iid(&superblock, dir_id, &dir) != EXIT_SUCCESS) {
 		return ENOENT;
 	}
 	return unlink_dir_entry(&superblock, dir, childs_name);
@@ -105,6 +106,22 @@ fisopfs_rmdir(const char *path)
 {
 	printf("[debug] fisopfs_rmdir(%s)\n", path);
 	return fisopfs_unlink(path);
+}
+
+static int
+fisopfs_create(const char *path,
+             mode_t mode, struct fuse_file_info *file_info)
+{
+	printf("[debug] fisopfs_create(%s, %d)\n", path, mode);
+
+	if (get_iid_from_path(&superblock, path) >= 0)
+		return EEXIST; // file exists
+
+	char parent_dir_path[PATH_MAX];
+	char *file_name = split_path(path, parent_dir_path);
+	int dir_id = get_iid_from_path(&superblock, parent_dir_path);
+	int ret_val = create_file(&superblock, file_name, dir_id, mode, file_info);
+	return ret_val < 0 ? -ret_val : EXIT_SUCCESS;
 }
 
 #define MAX_CONTENIDO
@@ -133,13 +150,28 @@ fisopfs_read(const char *path,
 	return size;
 }
 
+static int
+fisopfs_truncate(const char *path,
+             off_t offset)
+{
+	printf("[debug] fisopfs_truncate(%s, %lu)\n", path, offset);
+	inode_t *inode;
+	int inode_id = get_iid_from_path(&superblock, path);
+	if (get_inode_from_iid(&superblock, inode_id, &inode) != EXIT_SUCCESS)
+		return ENOENT;
+	inode_truncate(inode, offset);
+	return EXIT_SUCCESS;
+}
+
 static struct fuse_operations operations = {
 	.getattr = fisopfs_getattr,
 	.readdir = fisopfs_readdir,
 	.mkdir = fisopfs_mkdir,
 	.rmdir = fisopfs_rmdir,
 	.unlink = fisopfs_unlink,
-	.read = fisopfs_read,
+	.create = fisopfs_create,
+	//.read = fisopfs_read,
+	.truncate = fisopfs_truncate
 };
 
 int
@@ -158,9 +190,6 @@ main(int argc, char *argv[])
 
 /** Rename a file */
 //	int (*rename) (const char *, const char *);
-
-/** Change the size of a file */
-//	int (*truncate) (const char *, off_t);
 
 /** Read data from an open file
  *
@@ -187,32 +216,16 @@ main(int argc, char *argv[])
 //	int (*write) (const char *, const char *, size_t, off_t,
 //		      struct fuse_file_info *);
 
-/**
- * Create and open a file
+/*  *
+ * Change the access and modification times of a file with
+ * nanosecond resolution
  *
- * If the file does not exist, first create it with the specified
- * mode, and then open it.
+ * This supersedes the old utime() interface.  New applications
+ * should use this.
  *
- * If this method is not implemented or under Linux kernel
- * versions earlier than 2.6.15, the mknod() and open() methods
- * will be called instead.
+ * See the utimensat(2) man page for details.
  *
- * Introduced in version 2.5
+ * Introduced in version 2.6
  */
-//	int (*create) (const char *, mode_t, struct fuse_file_info *);
-
-/**
- * Change the size of an open file
- *
- * This method is called instead of the truncate() method if the
- * truncation was invoked from an ftruncate() system call.
- *
- * If this method is not implemented or under Linux kernel
- * versions earlier than 2.6.15, the truncate() method will be
- * called instead.
- *
- * Introduced in version 2.5
- */
-//	int (*ftruncate) (const char *, off_t, struct fuse_file_info *);
-
+//	int (*utimens) (const char *, const struct timespec tv[2]);
 //};
