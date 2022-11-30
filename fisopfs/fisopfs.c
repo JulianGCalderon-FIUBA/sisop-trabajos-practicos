@@ -23,13 +23,15 @@ static int
 fisopfs_getattr(const char *path, struct stat *st)
 {
 	printf("[debug] fisopfs_getattr(%s)\n", path);
-	int inode_id;
-	inode_t *inode;
 
-	if ((inode_id = get_iid_from_path(&superblock, path)) < 0)
+	// if ((inode_id = get_iid_from_path(&superblock, path)) < 0)
+	// 	return -ENOENT;
+	// if (get_inode_from_iid(&superblock, inode_id, &inode) != 0)
+	// 	return -ENOENT;
+	inode_t *inode;
+	if (get_inode_from_path(&superblock, path, &inode) != 0){
 		return -ENOENT;
-	if (get_inode_from_iid(&superblock, inode_id, &inode) != 0)
-		return -ENOENT;
+	}
 
 	*st = inode->stats;
 	return EXIT_SUCCESS;
@@ -44,11 +46,14 @@ fisopfs_readdir(const char *path,
 {
 	printf("[debug] fisopfs_readdir(%s)\n", path);
 	// get directory inode
-	int inode_id = get_iid_from_path(&superblock, path);
+	// int inode_id = get_iid_from_path(&superblock, path);
+	// int ret_value = get_inode_from_iid(&superblock, inode_id, &directory);
+	// if (ret_value != EXIT_SUCCESS)
+	// 	return ret_value;
 	inode_t *directory;
-	int ret_value = get_inode_from_iid(&superblock, inode_id, &directory);
-	if (ret_value != EXIT_SUCCESS)
-		return ret_value;
+	if (!get_inode_from_path(&superblock, path, &directory)) {
+		return -1;
+	}
 
 	// get dir_entry inode
 	inode_t *dir_entry_inode;
@@ -93,9 +98,13 @@ fisopfs_unlink(const char *path)
 	printf("[debug] fisopfs_unlink(%s)\n", path);
 	char parent_dir_path[PATH_MAX];
 	char *childs_name = split_path(path, parent_dir_path);
-	int dir_id = get_iid_from_path(&superblock, parent_dir_path);
+	// int dir_id = get_iid_from_path(&superblock, parent_dir_path);
+	// if (get_inode_from_iid(&superblock, dir_id, &dir) != EXIT_SUCCESS) {
+	// 	return ENOENT;
+	// }
+
 	inode_t *dir;
-	if (get_inode_from_iid(&superblock, dir_id, &dir) != EXIT_SUCCESS) {
+	if(get_inode_from_path(&superblock, parent_dir_path, &dir) != EXIT_SUCCESS){
 		return ENOENT;
 	}
 	return unlink_dir_entry(&superblock, dir, childs_name);
@@ -125,7 +134,7 @@ fisopfs_create(const char *path,
 }
 
 #define MAX_CONTENIDO
-static char fisop_file_contenidos[MAX_CONTENIDO] = "hola fisopfs!\n";
+// static char fisop_file_contenidos[MAX_CONTENIDO] = "hola fisopfs!\n";
 
 static int
 fisopfs_read(const char *path,
@@ -135,20 +144,49 @@ fisopfs_read(const char *path,
              struct fuse_file_info *fi)
 {
 	printf("[debug] fisopfs_read(%s, %lu, %lu)\n", path, offset, size);
+	
+	// int inode_id = get_iid_from_path(&superblock, path);
+	// if (get_inode_from_iid(&superblock, inode_id, &file_inode) != EXIT_SUCCESS)
+	// 	return ENOENT;
 
-	// Solo tenemos un archivo hardcodeado!
-	if (strcmp(path, "/fisop") != 0)
-		return -ENOENT;
+	inode_t *file_inode;
+	if (get_inode_from_path(&superblock, path, &file_inode) != EXIT_SUCCESS){
+		return ENOENT;
+	}
 
-	if (offset + size > strlen(fisop_file_contenidos))
-		size = strlen(fisop_file_contenidos) - offset;
-
-	size = size > 0 ? size : 0;
-
-	strncpy(buffer, fisop_file_contenidos + offset, size);
-
-	return size;
+	ssize_t size_read = inode_read(buffer, size, file_inode, offset);
+	if(size_read < size)
+		memset(&buffer[size_read], 0, size - size_read); 
+	
+	// fi->flags = file_inode->stats->flags;
+	return size_read;
 }
+
+
+/** Write data to an open file
+	 *
+	 * Write should return exactly the number of bytes requested
+	 * except on error.	 An exception to this is when the 'direct_io'
+	 * mount option is specified (see read operation).
+	 *
+	 * Changed in version 2.2
+	 */
+static int fisopfs_write (const char * path, const char * buffer, size_t size, off_t offset, struct fuse_file_info * fi){
+	
+	inode_t* file_inode; 
+	if (get_inode_from_path(&superblock, path, &file_inode) != EXIT_SUCCESS){
+		return ENOENT;
+	}
+	
+	ssize_t size_wrote = inode_write((char*)buffer, size, file_inode, offset);
+
+	if (size_wrote < size) {
+		return -1;
+	}
+
+	return size_wrote;	
+}
+
 
 static int
 fisopfs_truncate(const char *path,

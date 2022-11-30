@@ -8,6 +8,7 @@
 #include <linux/limits.h>
 #include "bitmap.h"
 #include "inode.h"
+#include "dir.h"
 
 
 #define ALL_PERMISSIONS (S_IRWXU | S_IRWXG | S_IRWXO)
@@ -37,6 +38,7 @@ get_inode_from_iid(superblock_t *superblock, int inode_id, inode_t **inode_dest)
 	*inode_dest = &superblock->inode_tables[table_num]->inodes[inode_pos];
 	return EXIT_SUCCESS;
 }
+
 
 /*
  * Returns the position of the table in superblock->inode_tables,
@@ -84,7 +86,7 @@ int
 malloc_inode_page(inode_t *inode, int page_num)
 {
 	if (page_num > PAGES_PER_INODE)
-		return EFBIG;
+		return EFBIG; 
 
 	char *page = mmap(NULL,
 	                  PAGE_SIZE,
@@ -333,4 +335,9 @@ void inode_truncate(inode_t *inode, size_t offset) {
 	for (int page_num = new_highest_page_num + 1; page_num <= highest_page_num; ++page_num) {
 		free_inode_page(inode, page_num);
 	}
+}
+
+int get_inode_from_path(superblock_t *superblock, const char* path, inode_t **inode_dest){
+	int inode_id = get_iid_from_path(superblock, path);
+	return get_inode_from_iid(superblock, inode_id, inode_dest);
 }
