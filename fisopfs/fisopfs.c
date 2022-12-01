@@ -51,7 +51,7 @@ fisopfs_readdir(const char *path,
 	// if (ret_value != EXIT_SUCCESS)
 	// 	return ret_value;
 	inode_t *directory;
-	if (!get_inode_from_path(&superblock, path, &directory)) {
+	if (get_inode_from_path(&superblock, path, &directory)) {
 		return -1;
 	}
 
@@ -74,7 +74,6 @@ fisopfs_readdir(const char *path,
 		read_directory(directory, offset, &dir_entry);
 		offset += sizeof(dir_entry_t);
 	}
-
 	return 0;
 }
 
