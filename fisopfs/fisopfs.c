@@ -24,10 +24,6 @@ fisopfs_getattr(const char *path, struct stat *st)
 {
 	printf("[debug] fisopfs_getattr(%s)\n", path);
 
-	// if ((inode_id = get_iid_from_path(&superblock, path)) < 0)
-	// 	return -ENOENT;
-	// if (get_inode_from_iid(&superblock, inode_id, &inode) != 0)
-	// 	return -ENOENT;
 	inode_t *inode;
 	if (get_inode_from_path(&superblock, path, &inode) != 0) {
 		return -ENOENT;
@@ -45,10 +41,7 @@ fisopfs_readdir(const char *path,
                 struct fuse_file_info *fi)
 {
 	printf("[debug] fisopfs_readdir(%s)\n", path);
-	// get directory inode
-	// int inode_id = get_iid_from_path(&superblock, path);
-	// int ret_value = get_inode_from_iid(&superblock, inode_id,
-	// &directory); if (ret_value != EXIT_SUCCESS) 	return ret_value;
+
 	inode_t *directory;
 	if (get_inode_from_path(&superblock, path, &directory)) {
 		return -1;
@@ -96,10 +89,6 @@ fisopfs_unlink(const char *path)
 	printf("[debug] fisopfs_unlink(%s)\n", path);
 	char parent_dir_path[PATH_MAX];
 	char *childs_name = split_path(path, parent_dir_path);
-	// int dir_id = get_iid_from_path(&superblock, parent_dir_path);
-	// if (get_inode_from_iid(&superblock, dir_id, &dir) != EXIT_SUCCESS) {
-	// 	return ENOENT;
-	// }
 
 	inode_t *dir;
 	if (get_inode_from_path(&superblock, parent_dir_path, &dir) !=
@@ -143,10 +132,6 @@ fisopfs_read(const char *path,
              struct fuse_file_info *fi)
 {
 	printf("[debug] fisopfs_read(%s, %lu, %lu)\n", path, offset, size);
-
-	// int inode_id = get_iid_from_path(&superblock, path);
-	// if (get_inode_from_iid(&superblock, inode_id, &file_inode) !=
-	// EXIT_SUCCESS) 	return ENOENT;
 
 	inode_t *file_inode;
 	if (get_inode_from_path(&superblock, path, &file_inode) != EXIT_SUCCESS) {
@@ -198,22 +183,64 @@ fisopfs_truncate(const char *path, off_t offset)
 {
 	printf("[debug] fisopfs_truncate(%s, %lu)\n", path, offset);
 	inode_t *inode;
-	int inode_id = get_iid_from_path(&superblock, path);
-	if (get_inode_from_iid(&superblock, inode_id, &inode) != EXIT_SUCCESS)
+	if (get_inode_from_path(&superblock, path, &inode) != EXIT_SUCCESS)
 		return ENOENT;
 	inode_truncate(inode, offset);
 	return EXIT_SUCCESS;
 }
 
-static struct fuse_operations operations = { .getattr = fisopfs_getattr,
-	                                     .readdir = fisopfs_readdir,
-	                                     .mkdir = fisopfs_mkdir,
-	                                     .rmdir = fisopfs_rmdir,
-	                                     .unlink = fisopfs_unlink,
-	                                     .create = fisopfs_create,
-	                                     .read = fisopfs_read,
-	                                     .write = fisopfs_write,
-	                                     .truncate = fisopfs_truncate };
+static int
+fisopfs_rename(const char *old_path, const char *new_path)
+{
+	char old_parent_dir_path[PATH_MAX];
+	char *old_name = split_path(old_path, old_parent_dir_path);
+
+	char new_parent_dir_path[PATH_MAX];
+	char *new_name = split_path(new_path, new_parent_dir_path);
+
+	inode_t *old_dir_inode;
+	if (get_inode_from_path(&superblock, old_parent_dir_path, &old_dir_inode) !=
+	    EXIT_SUCCESS) {
+		return ENOENT;
+	}
+
+	inode_t *new_dir_inode;
+	if (get_inode_from_path(&superblock, new_parent_dir_path, &new_dir_inode) !=
+	    EXIT_SUCCESS) {
+		return ENOENT;
+	}
+
+	inode_t *file_inode;
+	if (get_inode_from_path(&superblock, old_path, &file_inode) !=
+	    EXIT_SUCCESS) {
+		return ENOENT;
+	}
+
+	int ret_val = create_dir_entry(
+	        &superblock, new_dir_inode, file_inode->stats.st_ino, new_name);
+	if (ret_val != EXIT_SUCCESS) {
+		return ret_val;
+	}
+
+	ret_val = unlink_dir_entry(&superblock, old_dir_inode, old_name);
+	if (ret_val != EXIT_SUCCESS) {
+		return ret_val;
+	}
+	return EXIT_SUCCESS;
+}
+
+static struct fuse_operations operations = {
+	.getattr = fisopfs_getattr,
+	.readdir = fisopfs_readdir,
+	.mkdir = fisopfs_mkdir,
+	.rmdir = fisopfs_rmdir,
+	.unlink = fisopfs_unlink,
+	.create = fisopfs_create,
+	.read = fisopfs_read,
+	.write = fisopfs_write,
+	.truncate = fisopfs_truncate,
+	.rename = fisopfs_rename,
+};
 
 int
 main(int argc, char *argv[])
@@ -231,31 +258,6 @@ main(int argc, char *argv[])
 
 /** Rename a file */
 //	int (*rename) (const char *, const char *);
-
-/** Read data from an open file
- *
- * Read should return exactly the number of bytes requested except
- * on EOF or error, otherwise the rest of the data will be
- * substituted with zeroes.	 An exception to this is when the
- * 'direct_io' mount option is specified, in which case the return
- * value of the read system call will reflect the return value of
- * this operation.
- *
- * Changed in version 2.2
- */
-//	int (*read) (const char *, char *, size_t, off_t,
-//		     struct fuse_file_info *);
-
-/** Write data to an open file
- *
- * Write should return exactly the number of bytes requested
- * except on error.	 An exception to this is when the 'direct_io'
- * mount option is specified (see read operation).
- *
- * Changed in version 2.2
- */
-//	int (*write) (const char *, const char *, size_t, off_t,
-//		      struct fuse_file_info *);
 
 /*  *
  * Change the access and modification times of a file with

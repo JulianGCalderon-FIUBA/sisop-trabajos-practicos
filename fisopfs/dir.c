@@ -106,17 +106,25 @@ get_iid_from_path(superblock_t *superblock, const char *path)
  * ret_val is negative upon error
  */
 int
-create_dir_entry(inode_t *parent_dir, int entry_inode_id, const char *name)
+create_dir_entry(superblock_t *superblock,
+                 inode_t *parent_dir,
+                 int entry_inode_id,
+                 const char *name)
 {
 	dir_entry_t dir_entry = { .inode_id = entry_inode_id };
 	strcpy(dir_entry.name, name);
-
 
 	ssize_t ret_val = inode_write((char *) &dir_entry,
 	                              sizeof(dir_entry_t),
 	                              parent_dir,
 	                              parent_dir->stats.st_size);
 
+	inode_t *inode;
+	int ret_value = get_inode_from_iid(superblock, entry_inode_id, &inode);
+	if (ret_value != EXIT_SUCCESS) {
+		return ret_value;
+	}
+	inode->stats.st_nlink++;
 
 	return ret_val > 0 ? EXIT_SUCCESS : ret_val;
 }
@@ -161,8 +169,17 @@ unlink_dir_entry(superblock_t *superblock, inode_t *dir, const char *name)
 
 	// delete last dir_entry
 	inode_truncate(dir, sizeof(dir_entry_t));
-	// free inode
-	free_inode(superblock, deleted_dir_entry.inode_id);
+
+	// free inode if n_links = 0;
+	inode_t *deleted;
+	if (get_inode_from_iid(superblock, deleted_dir_entry.inode_id, &deleted) !=
+	    EXIT_SUCCESS) {
+		return ENOENT;
+	}
+	deleted->stats.st_nlink--;
+	if (deleted->stats.st_nlink == 0) {
+		free_inode(superblock, deleted_dir_entry.inode_id);
+	}
 	return EXIT_SUCCESS;
 }
 
@@ -171,17 +188,17 @@ unlink_dir_entry(superblock_t *superblock, inode_t *dir, const char *name)
  *  ret_val is negative upon error, else EXIT_SUCCESS
  */
 int
-init_dir(inode_t *dir, int parent_inode_id, mode_t mode)
+init_dir(superblock_t *superblock, inode_t *dir, int parent_inode_id, mode_t mode)
 {
 	// one link from parent and another one from '.'
 	dir->stats.st_nlink = 2;
 	dir->stats.st_mode = S_IFDIR | mode;
 	// set dir_entries
-	int ret_val = create_dir_entry(dir, dir->stats.st_ino, ".");
+	int ret_val = create_dir_entry(superblock, dir, dir->stats.st_ino, ".");
 	if (ret_val != EXIT_SUCCESS)
 		return ret_val;
 
-	return create_dir_entry(dir, dir->stats.st_ino, "..");
+	return create_dir_entry(superblock, dir, parent_inode_id, "..");
 }
 
 /*
@@ -194,23 +211,20 @@ create_dir(superblock_t *superblock, const char *name, int parent_inode_id, mode
 	if (!dir)
 		return ENOMEM;
 
-
 	int dir_inode_id = dir->stats.st_ino;
-	int ret_val = init_dir(dir, parent_inode_id, mode);
+	int ret_val = init_dir(superblock, dir, parent_inode_id, mode);
 	if (ret_val != EXIT_SUCCESS) {
 		free_inode(superblock, dir_inode_id);
 		return ret_val;
 	}
 
-
 	// increase parent's link count, and add self to parent's dir_entries
 	inode_t *parent_dir;
-
 
 	if (get_inode_from_iid(superblock, parent_inode_id, &parent_dir) ==
 	            EXIT_SUCCESS &&
 	    dir_inode_id != ROOT_DIR_INODE_ID) {
-		create_dir_entry(parent_dir, dir_inode_id, name);
+		create_dir_entry(superblock, parent_dir, dir_inode_id, name);
 		++parent_dir->stats.st_nlink;
 	}
 

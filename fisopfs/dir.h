@@ -17,14 +17,17 @@ int read_directory(inode_t *dir, size_t offset, dir_entry_t *dir_entry_dest);
  */
 int create_dir(superblock_t *superblock,
                const char *name,
-               int parent_inode_id, mode_t mode);
+               int parent_inode_id,
+               mode_t mode);
 
 
 /*
  * ret_val is negative upon error
  */
-int
-create_dir_entry(inode_t *parent_dir, int entry_inode_id, const char *name);
+int create_dir_entry(superblock_t *superblock,
+                     inode_t *parent_dir,
+                     int entry_inode_id,
+                     const char *name);
 
 /*
  * Returns negative value upon failure
