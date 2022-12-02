@@ -17,12 +17,12 @@ main()
 	printf("TESTING TO WRITE 20480 BYTES\n");
 
 	system("gcc tests/large_readwrite_write.c -o "
-	       "tests/bins/large_readwrite_write");
+	       "tests/bins/large_readwrite_write.o");
 	system("gcc tests/large_readwrite_read.c -o "
-	       "tests/bins/large_readwrite_read");
-	system("tests/bins/large_readwrite_write > "
+	       "tests/bins/large_readwrite_read.o");
+	system("tests/bins/large_readwrite_write.o > "
 	       "tests/to_mount/large_readwrite_test.txt");
-	system("tests/bins/large_readwrite_read < "
+	system("tests/bins/large_readwrite_read.o < "
 	       "tests/to_mount/large_readwrite_test.txt");
 
 	printf("OK\n");

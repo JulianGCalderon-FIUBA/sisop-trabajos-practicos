@@ -18,20 +18,20 @@ main()
 	system("sudo umount tests/to_mount");
 	system("make clean");
 	system("make");
-	system("mkdir tests/bin");
+	system("mkdir tests/bins");
 	system("mkdir tests/to_mount");
 	system("./fisopfs tests/to_mount/");
 
 	// TESTING
 	system("gcc tests/small_readwrite_test.c -o "
-	       "tests/bins/small_readwrite_test");
-	system("tests/bins/small_readwrite_test");
+	       "tests/bins/small_readwrite_test.o");
+	system("tests/bins/small_readwrite_test.o");
 	system("gcc tests/medium_readwrite_test.c -o "
-	       "tests/bins/medium_readwrite_test");
-	system("tests/bins/medium_readwrite_test");
+	       "tests/bins/medium_readwrite_test.o");
+	system("tests/bins/medium_readwrite_test.o");
 	system("gcc tests/large_readwrite_test.c -o "
-	       "tests/bins/large_readwrite_test");
-	system("tests/bins/large_readwrite_test");
+	       "tests/bins/large_readwrite_test.o");
+	system("tests/bins/large_readwrite_test.o");
 
 	system("sudo umount tests/to_mount");
 	system("rmdir tests/to_mount");

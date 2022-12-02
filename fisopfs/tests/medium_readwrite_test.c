@@ -18,12 +18,12 @@ main()
 
 
 	system("gcc tests/medium_readwrite_write.c -o "
-	       "tests/bins/medium_readwrite_write");
+	       "tests/bins/medium_readwrite_write.o");
 	system("gcc tests/medium_readwrite_read.c -o "
-	       "tests/bins/medium_readwrite_read");
-	system("tests/bins/medium_readwrite_write > "
+	       "tests/bins/medium_readwrite_read.o");
+	system("tests/bins/medium_readwrite_write.o > "
 	       "tests/to_mount/medium_readwrite_test.txt");
-	system("tests/bins/medium_readwrite_read < "
+	system("tests/bins/medium_readwrite_read.o < "
 	       "tests/to_mount/medium_readwrite_test.txt");
 
 	printf("OK\n");
