@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <string.h>
 
-#define BUFFER_SIZE 256
 
 int
 main()
