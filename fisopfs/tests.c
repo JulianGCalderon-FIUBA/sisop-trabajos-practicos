@@ -15,8 +15,10 @@ int
 main()
 {
 	// PREPARATION
+	system("sudo umount tests/to_mount");
 	system("make clean");
 	system("make");
+	system("mkdir tests/bin");
 	system("mkdir tests/to_mount");
 	system("./fisopfs tests/to_mount/");
 
