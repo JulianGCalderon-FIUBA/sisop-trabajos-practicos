@@ -315,7 +315,8 @@ inode_read(char *buffer, size_t total_bytes_to_read, inode_t *inode, size_t file
 ssize_t
 alloc_needed_pages(inode_t *inode, int final_page_number)
 {
-	int first_new_page_number = inode->stats.st_blocks + 1;
+	int blocks = inode->stats.st_blocks;
+	int first_new_page_number = blocks ? blocks + 1 : 0;
 
 	for (int i = first_new_page_number; i <= final_page_number; i++) {
 		int ret_val = malloc_inode_page(inode, i);
@@ -333,20 +334,25 @@ inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 	if (buffer_len == 0)
 		return 0;
 
+
 	// if an attempt to write exceeds maximum file size
 	size_t final_offset = file_offset + buffer_len;
 	int final_page_num = final_offset / PAGE_SIZE;
 	if (final_page_num > PAGES_PER_INODE) {
 		return -EFBIG;
 	}
+
+
 	// if offset is bigger than size
 	if (file_offset > inode->stats.st_size)
 		return -EINVAL;
+
 
 	// allocs memory for all needed pages
 	int ret_val = alloc_needed_pages(inode, final_page_num);
 	if (ret_val != EXIT_SUCCESS)
 		return -ret_val;
+
 
 	int cur_page_num = file_offset / PAGE_SIZE;
 	size_t bytes_to_write;
@@ -357,6 +363,7 @@ inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 	// write one page at a time, and return amount of bytes written
 	while (bytes_remaining > 0) {
 		page = inode->pages[cur_page_num];
+
 		size_t page_remaining_bytes = PAGE_SIZE - page_offset;
 		bytes_to_write = min(bytes_remaining, page_remaining_bytes);
 		memcpy(page + page_offset, buffer, bytes_to_write);

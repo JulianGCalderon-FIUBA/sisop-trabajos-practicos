@@ -13,7 +13,9 @@
  * Writes parent's dir path (including trailing slash) in the second argument,
  * and returns pointer to the character that followed the last slash (the child's name)
  */
-char *split_path(const char *path, char *parent_dir_path) {
+char *
+split_path(const char *path, char *parent_dir_path)
+{
 	char *last_slash_pos = strrchr(path, '/');
 	// strncpy so that parent_dir_path contains the trailling slash
 	memcpy(parent_dir_path, path, last_slash_pos - path + 1);
@@ -37,7 +39,8 @@ read_directory(inode_t *dir, size_t offset, dir_entry_t *dir_entry_dest)
 		dir_entry_dest->inode_id = -1;
 		return ret_val >= 0
 		               ? -1
-		               : -ret_val;  // if inode_read didn't return an error (partial read), return -1 (generic error)
+		               : -ret_val;  // if inode_read didn't return an error
+		                            // (partial read), return -1 (generic error)
 	}
 	return EXIT_SUCCESS;
 }
@@ -68,7 +71,7 @@ _get_iid_from_path(superblock_t *superblock, inode_t *dir, char *path)
 			read_directory(dir, offset, &dir_entry);
 			continue;
 		}
-		if (end_of_path) // end of path, file or dir was found
+		if (end_of_path)  // end of path, file or dir was found
 			return dir_entry.inode_id;
 
 		// expecting a dir to continue the search
@@ -108,10 +111,12 @@ create_dir_entry(inode_t *parent_dir, int entry_inode_id, const char *name)
 	dir_entry_t dir_entry = { .inode_id = entry_inode_id };
 	strcpy(dir_entry.name, name);
 
+
 	ssize_t ret_val = inode_write((char *) &dir_entry,
 	                              sizeof(dir_entry_t),
 	                              parent_dir,
 	                              parent_dir->stats.st_size);
+
 
 	return ret_val > 0 ? EXIT_SUCCESS : ret_val;
 }
@@ -125,7 +130,8 @@ unlink_dir_entry(superblock_t *superblock, inode_t *dir, const char *name)
 	// find dir_entry
 	dir_entry_t deleted_dir_entry;
 	size_t deleted_dirent_off = 0;
-	while(read_directory(dir, deleted_dirent_off, &deleted_dir_entry) == EXIT_SUCCESS) {
+	while (read_directory(dir, deleted_dirent_off, &deleted_dir_entry) ==
+	       EXIT_SUCCESS) {
 		if (!strcmp(deleted_dir_entry.name, name))
 			break;
 		deleted_dirent_off += sizeof(dir_entry_t);
@@ -135,21 +141,23 @@ unlink_dir_entry(superblock_t *superblock, inode_t *dir, const char *name)
 		return ENOENT;
 
 	dir_entry_t last_dir_entry;
-	read_directory(dir, dir->stats.st_size - sizeof(dir_entry_t), &last_dir_entry);
-	
+	read_directory(dir,
+	               dir->stats.st_size - sizeof(dir_entry_t),
+	               &last_dir_entry);
+
 	// move last dir_entry to dir_entry position
 	inode_write((char *) &last_dir_entry,
-			sizeof(dir_entry_t),
-			dir,
-			deleted_dirent_off);
+	            sizeof(dir_entry_t),
+	            dir,
+	            deleted_dirent_off);
 
 	// mark last dir_entry as invalid
 	last_dir_entry.name[0] = '\0';
 	last_dir_entry.inode_id = -1;
 	inode_write((char *) &last_dir_entry,
-			sizeof(dir_entry_t),
-			dir,
-			dir->stats.st_size - sizeof(dir_entry_t));
+	            sizeof(dir_entry_t),
+	            dir,
+	            dir->stats.st_size - sizeof(dir_entry_t));
 
 	// delete last dir_entry
 	inode_truncate(dir, sizeof(dir_entry_t));
@@ -186,12 +194,15 @@ create_dir(superblock_t *superblock, const char *name, int parent_inode_id, mode
 	if (!dir)
 		return ENOMEM;
 
+
 	int dir_inode_id = dir->stats.st_ino;
 	int ret_val = init_dir(dir, parent_inode_id, mode);
 	if (ret_val != EXIT_SUCCESS) {
 		free_inode(superblock, dir_inode_id);
 		return ret_val;
 	}
+
+
 	// increase parent's link count, and add self to parent's dir_entries
 	inode_t *parent_dir;
 
