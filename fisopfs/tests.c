@@ -27,6 +27,9 @@ main()
 	system("gcc tests/medium_readwrite_test.c -o "
 	       "tests/bins/medium_readwrite_test");
 	system("tests/bins/medium_readwrite_test");
+	system("gcc tests/large_readwrite_test.c -o "
+	       "tests/bins/large_readwrite_test");
+	system("tests/bins/large_readwrite_test");
 
 	system("sudo umount tests/to_mount");
 	system("rmdir tests/to_mount");

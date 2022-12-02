@@ -14,6 +14,9 @@
 int
 main()
 {
+	printf("TESTING TO WRITE 16384 BYTES\n");
+
+
 	system("gcc tests/medium_readwrite_write.c -o "
 	       "tests/bins/medium_readwrite_write");
 	wait(NULL);
@@ -26,4 +29,6 @@ main()
 	system("tests/bins/medium_readwrite_read < "
 	       "tests/to_mount/medium_readwrite_test.txt");
 	wait(NULL);
+
+	printf("OK\n");
 }

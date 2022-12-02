@@ -312,36 +312,57 @@ inode_read(char *buffer, size_t total_bytes_to_read, inode_t *inode, size_t file
 	return total_bytes_to_read - bytes_remaining;
 }
 
-ssize_t
-alloc_needed_pages(inode_t *inode, int final_page_number)
+void
+free_unneeded_pages(inode_t *inode, int pages_to_free)
 {
-	int blocks = inode->stats.st_blocks;
+	int number_of_pages = inode->stats.st_blocks;
 
-	for (int i = blocks; i <= final_page_number; i++) {
-		int ret_val = malloc_inode_page(inode, i);
+	for (int i = 0; i < pages_to_free; i++) {
+		free_inode_page(inode, number_of_pages - 1 - i);
+	}
+}
+
+ssize_t
+alloc_needed_pages(inode_t *inode, int pages_to_alloc)
+{
+	int initial_number_of_pages = inode->stats.st_blocks;
+
+	for (int i = 0; i < pages_to_alloc; i++) {
+		int ret_val =
+		        malloc_inode_page(inode, initial_number_of_pages + i);
+
 		if (ret_val != EXIT_SUCCESS) {
+			free_unneeded_pages(inode, i);
 			return -ret_val;
 		}
 	}
 	return EXIT_SUCCESS;
 }
 
+
 ssize_t
 inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 {
 	if (buffer_len == 0)
 		return 0;
+
 	// if an attempt to write exceeds maximum file size
 	size_t final_offset = file_offset + buffer_len;
-	int final_page_num = (final_offset - 1) / PAGE_SIZE;
-	if (final_page_num >= PAGES_PER_INODE) {
+	int needed_pages = ((final_offset - 1) / PAGE_SIZE) + 1;
+	if (needed_pages > PAGES_PER_INODE) {
 		return -EFBIG;
 	}
+
+
 	// if offset is bigger than size
 	if (file_offset > inode->stats.st_size)
 		return -EINVAL;
+
 	// allocs memory for all needed pages
-	int ret_val = alloc_needed_pages(inode, final_page_num);
+	int pages_to_alloc = needed_pages - inode->stats.st_blocks;
+
+
+	int ret_val = alloc_needed_pages(inode, pages_to_alloc);
 	if (ret_val != EXIT_SUCCESS)
 		return -ret_val;
 
