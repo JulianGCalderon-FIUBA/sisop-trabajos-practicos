@@ -280,32 +280,51 @@ max(size_t x, size_t y)
 }
 
 ssize_t
-inode_read(char *buffer, size_t ttl_bytes_to_read, inode_t *inode, size_t file_offset)
+inode_read(char *buffer, size_t total_bytes_to_read, inode_t *inode, size_t file_offset)
 {
-	if (ttl_bytes_to_read == 0)
+	if (total_bytes_to_read == 0)
 		return 0;
 	if (file_offset > inode->stats.st_size)
 		return -EINVAL;
 
 	int cur_page_num = file_offset / PAGE_SIZE;
 	size_t page_offset = file_offset % PAGE_SIZE;
-	ttl_bytes_to_read =
-	        min(ttl_bytes_to_read, inode->stats.st_size - file_offset);
 
-	size_t bytes_remaining = ttl_bytes_to_read;
+	size_t file_remaining_bytes = inode->stats.st_size - file_offset;
+	total_bytes_to_read = min(total_bytes_to_read, file_remaining_bytes);
+
+	size_t bytes_remaining = total_bytes_to_read;
 	size_t bytes_to_read;
 	char *page;
 	// read one page at a time, and return amount of bytes read
 	while (bytes_remaining > 0) {
 		page = inode->pages[cur_page_num];
-		bytes_to_read = min(bytes_remaining, PAGE_SIZE - page_offset);
+
+		size_t page_remaining_bytes = PAGE_SIZE - page_offset;
+		bytes_to_read = min(bytes_remaining, page_remaining_bytes);
 		memcpy(buffer, page + page_offset, bytes_to_read);
+
 		bytes_remaining -= bytes_to_read;
 		++cur_page_num;
 		page_offset = 0;
 	}
 
-	return ttl_bytes_to_read - bytes_remaining;
+	return total_bytes_to_read - bytes_remaining;
+}
+
+ssize_t
+alloc_needed_pages(inode_t *inode, int final_page_number)
+{
+	int first_new_page_number = inode->stats.st_blocks + 1;
+
+	for (int i = first_new_page_number; i <= final_page_number; i++) {
+		int ret_val = malloc_inode_page(inode, i);
+		if (ret_val != EXIT_SUCCESS) {
+			return -ret_val;
+		}
+		inode->stats.st_blocks++;
+	}
+	return EXIT_SUCCESS;
 }
 
 ssize_t
@@ -313,49 +332,42 @@ inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 {
 	if (buffer_len == 0)
 		return 0;
-	int cur_page_num = file_offset / PAGE_SIZE;
 
-	// if file is already at max size, return EFBIG error
-	if (inode->stats.st_size >= PAGE_SIZE * PAGES_PER_INODE)
+	// if an attempt to write exceeds maximum file size
+	size_t final_offset = file_offset + buffer_len;
+	int final_page_num = final_offset / PAGE_SIZE;
+	if (final_page_num > PAGES_PER_INODE) {
 		return -EFBIG;
-	// if offset is bigger than size, return EINVAL error
+	}
+	// if offset is bigger than size
 	if (file_offset > inode->stats.st_size)
 		return -EINVAL;
 
-	// may happen if prev page is full, or this is the first page
-	if (inode->pages[cur_page_num] == NULL) {
-		int ret_val = malloc_inode_page(inode, cur_page_num);
-		if (ret_val != EXIT_SUCCESS)
-			return -ret_val;
-	}
+	// allocs memory for all needed pages
+	int ret_val = alloc_needed_pages(inode, final_page_num);
+	if (ret_val != EXIT_SUCCESS)
+		return -ret_val;
 
-	// write one page at a time, and return amount of bytes written
+	int cur_page_num = file_offset / PAGE_SIZE;
 	size_t bytes_to_write;
 	size_t bytes_remaining = buffer_len;
 	size_t page_offset = file_offset % PAGE_SIZE;
-	char *page = inode->pages[cur_page_num];
+	char *page;
+
+	// write one page at a time, and return amount of bytes written
 	while (bytes_remaining > 0) {
-		// may happen if prev page is full, or this is the first page
-		if (page == NULL) {
-			if (malloc_inode_page(inode, cur_page_num) != EXIT_SUCCESS)
-				break;
-			page = inode->pages[cur_page_num];
-		}
-		bytes_to_write = min(bytes_remaining, PAGE_SIZE - page_offset);
+		page = inode->pages[cur_page_num];
+		size_t page_remaining_bytes = PAGE_SIZE - page_offset;
+		bytes_to_write = min(bytes_remaining, page_remaining_bytes);
 		memcpy(page + page_offset, buffer, bytes_to_write);
+
 		bytes_remaining -= bytes_to_write;
 		++cur_page_num;
 		page_offset = 0;
-		if (cur_page_num >= PAGES_PER_INODE)
-			break;
-		page = inode->pages[cur_page_num];
 	}
 
-	// initial offset + bytes written
-	file_offset += buffer_len - bytes_remaining;
-	inode->stats.st_size = max(inode->stats.st_size, file_offset);
-
-	return buffer_len - bytes_remaining;
+	inode->stats.st_size = max(inode->stats.st_size, final_offset);
+	return buffer_len;
 }
 
 /*
