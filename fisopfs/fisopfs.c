@@ -1,5 +1,6 @@
 #define FUSE_USE_VERSION 30
 
+#define _GNU_SOURCE
 #include <fuse.h>
 #include <errno.h>
 #include <stdio.h>
@@ -219,15 +220,17 @@ void
 fisopfs_destroy(void *private_data)
 {
 	int data_fd = open("data.fisopfs", O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-	printf("data.fisops open: %s\n", strerror(errno));
+	if (data_fd == -1)
+		return;
 
 	bitmap128_t *bitmap = &superblock.free_tables_bitmap;
 
 	if (write(data_fd, bitmap, sizeof(bitmap128_t)) != sizeof(bitmap128_t))
 		return;
 
-	printf("bitmap write: %s\n", strerror(errno));
+	printf("wrote bitmap\n");
 
+	printf("for each occupied inode table\n");
 
 	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
 		if (bitmap_getbit(bitmap, i))
@@ -237,37 +240,40 @@ fisopfs_destroy(void *private_data)
 		if (write(data_fd, table, PAGE_SIZE) != PAGE_SIZE)
 			return;
 
-		printf("table %i write: %s\n", i, strerror(errno));
+		printf("-wrote inode table %i\n", i);
 	}
+
+	printf("wrote all inode tables\n");
 
 
 	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
 		if (bitmap_getbit(bitmap, i))
 			continue;
 
+		printf("-accessing inode table %i\n", i);
+
+
 		inode_table_t *table = superblock.inode_tables[i];
 
 		bitmap128_t *bitmap = &table->free_inodes_bitmap;
 		inode_t *inodes = table->inodes;
 
+		printf("-for every inode in table...\n");
 
 		for (int j = 0; j < INODES_PER_TABLE; j++) {
 			if (bitmap_getbit(bitmap, j))
 				continue;
 
-			inode_t *inode = inodes + j;
+			printf("--accesing inode %i\n", j);
 
+			inode_t *inode = inodes + j;
 
 			for (int k = 0; k < inode->stats.st_blocks; k++) {
 				char *page = inode->pages[k];
 				if (write(data_fd, page, PAGE_SIZE) != PAGE_SIZE)
 					return;
 
-				printf("table %i inode %i page %i write: %s\n",
-				       i,
-				       j,
-				       k,
-				       strerror(errno));
+				printf("--wrote page %i\n", k);
 			}
 		}
 	}
@@ -293,30 +299,33 @@ static struct fuse_operations operations = {
 int
 deserialize(char *path)
 {
-	FILE *data = fopen("data.fisopfs", "r");
-	if (!data) {
+	int data_fd = open("data.fisopfs", O_RDONLY);
+	if (data_fd == -1) {
 		return -1;
 	}
-
-	printf("found file\n");
-
-	int fd = fileno(data);
 
 	bitmap128_t *bitmap = &superblock.free_tables_bitmap;
 
-	if (fread(bitmap, sizeof(bitmap128_t), 1, data) != 1) {
+	if (read(data_fd, bitmap, sizeof(bitmap128_t)) != sizeof(bitmap128_t)) {
 		return -1;
 	};
-
-	printf("read bitmap\n");
 
 
 	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
 		if (bitmap_getbit(bitmap, i))
 			continue;
 
-		superblock.inode_tables[i] = mmap(
-		        NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+
+		inode_table_t *inode_table = mmap(NULL,
+		                                  PAGE_SIZE,
+		                                  PROT_READ | PROT_WRITE,
+		                                  MAP_ANON | MAP_PRIVATE,
+		                                  -1,
+		                                  0);
+		if (read(data_fd, inode_table, PAGE_SIZE) != PAGE_SIZE)
+			return -1;
+
+		superblock.inode_tables[i] = inode_table;
 	}
 
 
@@ -324,28 +333,35 @@ deserialize(char *path)
 		if (bitmap_getbit(bitmap, i))
 			continue;
 
+
 		inode_table_t *table = superblock.inode_tables[i];
-		bitmap128_t *bitmap = &table->free_inodes_bitmap;
-		inode_t *inodes = table->inodes;
+		bitmap128_t *table_bitmap = &(table->free_inodes_bitmap);
+		inode_t *table_inodes = table->inodes;
+
 
 		for (int j = 0; j < INODES_PER_TABLE; j++) {
-			if (bitmap_getbit(bitmap, j))
+			if (bitmap_getbit(table_bitmap, j))
 				continue;
 
-			inode_t *inode = inodes + j;
+
+			inode_t *inode = table_inodes + j;
 
 			for (int k = 0; k < inode->stats.st_blocks; k++) {
-				inode->pages[k] = mmap(NULL,
-				                       PAGE_SIZE,
-				                       PROT_READ | PROT_WRITE,
-				                       MAP_PRIVATE,
-				                       fd,
-				                       0);
+				char *page = mmap(NULL,
+				                  PAGE_SIZE,
+				                  PROT_READ | PROT_WRITE,
+				                  MAP_ANON | MAP_PRIVATE,
+				                  -1,
+				                  0);
+				if (read(data_fd, page, PAGE_SIZE) != PAGE_SIZE)
+					return -1;
+				inode->pages[k] = page;
 			}
 		}
 	}
 
-	fclose(data);
+
+	close(data_fd);
 
 	return 0;
 }
