@@ -18,6 +18,8 @@
 #include "dir.h"
 #include <sys/mman.h>
 
+#define SERIAL_PATH "data.fisopfs"
+
 superblock_t superblock;
 #define ALL_PERMISSIONS (S_IRWXU | S_IRWXG | S_IRWXO)
 
@@ -216,72 +218,6 @@ fisopfs_rename(const char *old_path, const char *new_path)
 }
 
 
-void
-fisopfs_destroy(void *private_data)
-{
-	int data_fd = open("data.fisopfs", O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-	if (data_fd == -1)
-		return;
-
-	bitmap128_t *bitmap = &superblock.free_tables_bitmap;
-
-	if (write(data_fd, bitmap, sizeof(bitmap128_t)) != sizeof(bitmap128_t))
-		return;
-
-	printf("wrote bitmap\n");
-
-	printf("for each occupied inode table\n");
-
-	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
-		if (bitmap_getbit(bitmap, i))
-			continue;
-
-		inode_table_t *table = superblock.inode_tables[i];
-		if (write(data_fd, table, PAGE_SIZE) != PAGE_SIZE)
-			return;
-
-		printf("-wrote inode table %i\n", i);
-	}
-
-	printf("wrote all inode tables\n");
-
-
-	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
-		if (bitmap_getbit(bitmap, i))
-			continue;
-
-		printf("-accessing inode table %i\n", i);
-
-
-		inode_table_t *table = superblock.inode_tables[i];
-
-		bitmap128_t *bitmap = &table->free_inodes_bitmap;
-		inode_t *inodes = table->inodes;
-
-		printf("-for every inode in table...\n");
-
-		for (int j = 0; j < INODES_PER_TABLE; j++) {
-			if (bitmap_getbit(bitmap, j))
-				continue;
-
-			printf("--accesing inode %i\n", j);
-
-			inode_t *inode = inodes + j;
-
-			for (int k = 0; k < inode->stats.st_blocks; k++) {
-				char *page = inode->pages[k];
-				if (write(data_fd, page, PAGE_SIZE) != PAGE_SIZE)
-					return;
-
-				printf("--wrote page %i\n", k);
-			}
-		}
-	}
-
-	close(data_fd);
-}
-
-
 static struct fuse_operations operations = {
 	.getattr = fisopfs_getattr,
 	.readdir = fisopfs_readdir,
@@ -293,13 +229,65 @@ static struct fuse_operations operations = {
 	.write = fisopfs_write,
 	.truncate = fisopfs_truncate,
 	.rename = fisopfs_rename,
-	.destroy = fisopfs_destroy,
 };
 
-int
-deserialize(char *path)
+void
+serialize()
 {
-	int data_fd = open("data.fisopfs", O_RDONLY);
+	int data_fd = open(SERIAL_PATH, O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+	if (data_fd == -1)
+		return;
+
+	bitmap128_t *bitmap = &superblock.free_tables_bitmap;
+
+	if (write(data_fd, bitmap, sizeof(bitmap128_t)) != sizeof(bitmap128_t))
+		return;
+
+
+	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
+		if (bitmap_getbit(bitmap, i))
+			continue;
+
+		inode_table_t *table = superblock.inode_tables[i];
+		if (write(data_fd, table, PAGE_SIZE) != PAGE_SIZE)
+			return;
+	}
+
+
+	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
+		if (bitmap_getbit(bitmap, i))
+			continue;
+
+
+		inode_table_t *table = superblock.inode_tables[i];
+
+		bitmap128_t *bitmap = &table->free_inodes_bitmap;
+		inode_t *inodes = table->inodes;
+
+
+		for (int j = 0; j < INODES_PER_TABLE; j++) {
+			if (bitmap_getbit(bitmap, j))
+				continue;
+
+
+			inode_t *inode = inodes + j;
+
+			for (int k = 0; k < inode->stats.st_blocks; k++) {
+				char *page = inode->pages[k];
+				if (write(data_fd, page, PAGE_SIZE) != PAGE_SIZE)
+					return;
+			}
+		}
+	}
+
+	close(data_fd);
+}
+
+
+int
+deserialize()
+{
+	int data_fd = open(SERIAL_PATH, O_RDONLY);
 	if (data_fd == -1) {
 		return -1;
 	}
@@ -370,13 +358,14 @@ deserialize(char *path)
 int
 main(int argc, char *argv[])
 {
-	if (deserialize("data.fisopfs")) {
+	if (deserialize()) {
 		// mark all tables as free/unused
 		bitmap_set_all_1(&superblock.free_tables_bitmap);
-
 		// initialise root_dir
 		create_dir(&superblock, "/", ROOT_DIR_INODE_ID, ALL_PERMISSIONS);
 	}
+
+	atexit(serialize);
 
 	return fuse_main(argc, argv, &operations, NULL);
 }
