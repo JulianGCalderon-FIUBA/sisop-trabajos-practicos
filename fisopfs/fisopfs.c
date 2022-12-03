@@ -207,8 +207,8 @@ fisopfs_mkdir(const char *path, mode_t mode)
 	if (inode_id < 0) {
 		return -1;
 	}
-	return create_dir(&superblock, new_dirs_name, inode_id, mode) <
-	       0;  // returns 0 if create_dir succeeds
+	// returns 0 if create_dir succeeds
+	return create_dir(&superblock, new_dirs_name, inode_id, mode) < 0;
 }
 
 static int
