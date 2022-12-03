@@ -15,6 +15,7 @@
 #include "inode.h"
 #include "file.h"
 #include "dir.h"
+#include <sys/mman.h>
 
 superblock_t superblock;
 #define ALL_PERMISSIONS (S_IRWXU | S_IRWXG | S_IRWXO)
@@ -166,8 +167,6 @@ fisopfs_write(const char *path,
 	ssize_t size_written =
 	        inode_write((char *) buffer, size, file_inode, offset);
 
-	printf("%li\n", size_written);
-
 	// return either bytes written, or error stored in size_wrote
 	return size_written;
 }
@@ -215,6 +214,68 @@ fisopfs_rename(const char *old_path, const char *new_path)
 	return ret_val;
 }
 
+
+void
+fisopfs_destroy(void *private_data)
+{
+	int data_fd = open("data.fisopfs", O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+	printf("data.fisops open: %s\n", strerror(errno));
+
+	bitmap128_t *bitmap = &superblock.free_tables_bitmap;
+
+	if (write(data_fd, bitmap, sizeof(bitmap128_t)) != sizeof(bitmap128_t))
+		return;
+
+	printf("bitmap write: %s\n", strerror(errno));
+
+
+	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
+		if (bitmap_getbit(bitmap, i))
+			continue;
+
+		inode_table_t *table = superblock.inode_tables[i];
+		if (write(data_fd, table, PAGE_SIZE) != PAGE_SIZE)
+			return;
+
+		printf("table %i write: %s\n", i, strerror(errno));
+	}
+
+
+	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
+		if (bitmap_getbit(bitmap, i))
+			continue;
+
+		inode_table_t *table = superblock.inode_tables[i];
+
+		bitmap128_t *bitmap = &table->free_inodes_bitmap;
+		inode_t *inodes = table->inodes;
+
+
+		for (int j = 0; j < INODES_PER_TABLE; j++) {
+			if (bitmap_getbit(bitmap, j))
+				continue;
+
+			inode_t *inode = inodes + j;
+
+
+			for (int k = 0; k < inode->stats.st_blocks; k++) {
+				char *page = inode->pages[k];
+				if (write(data_fd, page, PAGE_SIZE) != PAGE_SIZE)
+					return;
+
+				printf("table %i inode %i page %i write: %s\n",
+				       i,
+				       j,
+				       k,
+				       strerror(errno));
+			}
+		}
+	}
+
+	close(data_fd);
+}
+
+
 static struct fuse_operations operations = {
 	.getattr = fisopfs_getattr,
 	.readdir = fisopfs_readdir,
@@ -226,24 +287,87 @@ static struct fuse_operations operations = {
 	.write = fisopfs_write,
 	.truncate = fisopfs_truncate,
 	.rename = fisopfs_rename,
+	.destroy = fisopfs_destroy,
 };
+
+int
+deserialize(char *path)
+{
+	FILE *data = fopen("data.fisopfs", "r");
+	if (!data) {
+		return -1;
+	}
+
+	printf("found file\n");
+
+	int fd = fileno(data);
+
+	bitmap128_t *bitmap = &superblock.free_tables_bitmap;
+
+	if (fread(bitmap, sizeof(bitmap128_t), 1, data) != 1) {
+		return -1;
+	};
+
+	printf("read bitmap\n");
+
+
+	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
+		if (bitmap_getbit(bitmap, i))
+			continue;
+
+		superblock.inode_tables[i] = mmap(
+		        NULL, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	}
+
+
+	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
+		if (bitmap_getbit(bitmap, i))
+			continue;
+
+		inode_table_t *table = superblock.inode_tables[i];
+		bitmap128_t *bitmap = &table->free_inodes_bitmap;
+		inode_t *inodes = table->inodes;
+
+		for (int j = 0; j < INODES_PER_TABLE; j++) {
+			if (bitmap_getbit(bitmap, j))
+				continue;
+
+			inode_t *inode = inodes + j;
+
+			for (int k = 0; k < inode->stats.st_blocks; k++) {
+				inode->pages[k] = mmap(NULL,
+				                       PAGE_SIZE,
+				                       PROT_READ | PROT_WRITE,
+				                       MAP_PRIVATE,
+				                       fd,
+				                       0);
+			}
+		}
+	}
+
+	fclose(data);
+
+	return 0;
+}
+
 
 int
 main(int argc, char *argv[])
 {
-	// init filesystem
-	bitmap_set_all_1(
-	        &superblock.free_tables_bitmap);  // mark all tables as free/unused
-	// initialise root_dir
-	create_dir(&superblock, "/", ROOT_DIR_INODE_ID, ALL_PERMISSIONS);
+	if (deserialize("data.fisopfs")) {
+		// mark all tables as free/unused
+		bitmap_set_all_1(&superblock.free_tables_bitmap);
+
+		// initialise root_dir
+		create_dir(&superblock, "/", ROOT_DIR_INODE_ID, ALL_PERMISSIONS);
+	}
+
 	return fuse_main(argc, argv, &operations, NULL);
 }
 
 // fuse operations que probablemente haya que implementar:
 // struct fuse_operations {
 
-/** Rename a file */
-//	int (*rename) (const char *, const char *);
 
 /*  *
  * Change the access and modification times of a file with

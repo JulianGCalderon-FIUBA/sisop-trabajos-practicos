@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #define TEST_DIR "/home/julian/sisop/sisop_2022b_g02/fisopfs/tests"
 #define MOUNT_DIR "/home/julian/sisop/sisop_2022b_g02/fisopfs"
@@ -19,11 +20,14 @@ main()
 	system("make clean");
 	system("make");
 	system("mkdir tests/to_mount");
-	system("./fisopfs tests/to_mount/");
+
+	if (fork() == 0) {
+		system("./fisopfs tests/to_mount/ -f");
+		return 0;
+	}
 
 	chdir(TEST_DIR);
 
-	// TESTING
 	system("gcc readwrite.c -o readwrite.o");
 	system("./readwrite.o");
 
@@ -31,4 +35,6 @@ main()
 
 	system("sudo umount tests/to_mount");
 	system("rmdir tests/to_mount");
+
+	wait(NULL);
 }

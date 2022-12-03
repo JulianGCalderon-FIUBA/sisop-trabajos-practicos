@@ -346,16 +346,12 @@ alloc_needed_pages(inode_t *inode, int pages_to_alloc)
 ssize_t
 inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 {
-	printf("file_offset: %li\n", file_offset);
-	printf("buffer_len: %li\n", buffer_len);
-
 	if (buffer_len == 0)
 		return 0;
 
 	// if an attempt to write exceeds maximum file size
 	size_t final_offset = file_offset + buffer_len;
 	int needed_pages = highest_page_number_for_size(final_offset) + 1;
-	printf("needed_pages: %i\n", needed_pages);
 
 	if (needed_pages > PAGES_PER_INODE) {
 		return -EFBIG;
