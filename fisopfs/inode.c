@@ -388,25 +388,34 @@ inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 	return buffer_len;
 }
 
+int
+highest_page_number_for_size(off_t size)
+{
+	return size ? (size - 1) / PAGES_PER_INODE : 0;
+}
+
+
 /*
  * Inode changes size to min(inode.stats.st_size, offset)
  * Bytes at the end of the file are removed
  */
 void
-inode_truncate(inode_t *inode, size_t offset)
+inode_truncate(inode_t *inode, size_t new_size)
 {
-	if (inode->stats.st_size == 0 || offset == 0)
+	int size_difference = new_size - inode->stats.st_size;
+	if (size_difference > 0) {
+		//  todo!
 		return;
-	offset = min(offset, inode->stats.st_size);
-	int highest_page_num = (inode->stats.st_size - 1) / PAGES_PER_INODE;
-	inode->stats.st_size -= offset;
-	int new_highest_page_num = (inode->stats.st_size - 1) / PAGES_PER_INODE;
-
-	// free pages if necessary
-	for (int page_num = new_highest_page_num + 1; page_num <= highest_page_num;
-	     ++page_num) {
-		free_inode_page(inode, page_num);
 	}
+
+
+	int highest_page_num = highest_page_number_for_size(inode->stats.st_size);
+	int new_highest_page_num = highest_page_number_for_size(new_size);
+
+	int page_difference = new_highest_page_num - highest_page_num;
+	free_unneeded_pages(inode, page_difference);
+
+	inode->stats.st_size = new_size;
 }
 
 int

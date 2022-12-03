@@ -9,28 +9,26 @@
 #include <errno.h>
 #include <string.h>
 
+#define TEST_DIR "/home/julian/sisop/sisop_2022b_g02/fisopfs/tests"
+#define MOUNT_DIR "/home/julian/sisop/sisop_2022b_g02/fisopfs"
 
 int
 main()
 {
-	// PREPARATION
 	system("sudo umount tests/to_mount");
 	system("make clean");
 	system("make");
-	system("mkdir tests/bins");
 	system("mkdir tests/to_mount");
 	system("./fisopfs tests/to_mount/");
 
+	chdir(TEST_DIR);
+
 	// TESTING
-	system("gcc tests/small_readwrite_test.c -o "
-	       "tests/bins/small_readwrite_test.o");
-	system("tests/bins/small_readwrite_test.o");
-	system("gcc tests/medium_readwrite_test.c -o "
-	       "tests/bins/medium_readwrite_test.o");
-	system("tests/bins/medium_readwrite_test.o");
-	system("gcc tests/large_readwrite_test.c -o "
-	       "tests/bins/large_readwrite_test.o");
-	system("tests/bins/large_readwrite_test.o");
+	system("gcc readwrite.c -o readwrite.o");
+	system("./readwrite.o");
+
+	chdir(MOUNT_DIR);
+
 
 	system("sudo umount tests/to_mount");
 	system("rmdir tests/to_mount");

@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "unistd.h": "c",
-        "errno.h": "c"
+        "errno.h": "c",
+        "assert.h": "c"
     }
 }
