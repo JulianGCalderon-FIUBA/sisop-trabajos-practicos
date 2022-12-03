@@ -108,7 +108,7 @@ fisopfs_rmdir(const char *path)
 static int
 fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *file_info)
 {
-	printf("[debug] fisopfs_create(%s, %d)\n", path, mode);
+	printf("[debug] fisopfs_create(%s, 0%o)\n", path, mode);
 
 	if (get_iid_from_path(&superblock, path) >= 0)
 		return EEXIST;  // file exists
@@ -120,9 +120,6 @@ fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *file_info)
 	        create_file(&superblock, file_name, dir_id, mode, file_info);
 	return ret_val < 0 ? -ret_val : EXIT_SUCCESS;
 }
-
-#define MAX_CONTENIDO
-// static char fisop_file_contenidos[MAX_CONTENIDO] = "hola fisopfs!\n";
 
 static int
 fisopfs_read(const char *path,
@@ -142,7 +139,6 @@ fisopfs_read(const char *path,
 	if (size_read < size)
 		memset(&buffer[size_read], 0, size - size_read);
 
-	// fi->flags = file_inode->stats->flags;
 	return size_read;
 }
 
@@ -170,10 +166,7 @@ fisopfs_write(const char *path,
 	ssize_t size_wrote =
 	        inode_write((char *) buffer, size, file_inode, offset);
 
-	if (size_wrote < size) {
-		return -1;
-	}
-
+	// return either bytes written, or error stored in size_wrote
 	return size_wrote;
 }
 
@@ -198,29 +191,20 @@ fisopfs_rename(const char *old_path, const char *new_path)
 	char new_parent_dir_path[PATH_MAX];
 	char *new_name = split_path(new_path, new_parent_dir_path);
 
+	int ret_val = 0;
 	inode_t *old_dir_inode;
-	if (get_inode_from_path(&superblock, old_parent_dir_path, &old_dir_inode) !=
-	    EXIT_SUCCESS) {
-		return ENOENT;
-	}
-
 	inode_t *new_dir_inode;
-	if (get_inode_from_path(&superblock, new_parent_dir_path, &new_dir_inode) !=
-	    EXIT_SUCCESS) {
-		return ENOENT;
-	}
-
 	inode_t *file_inode;
-	if (get_inode_from_path(&superblock, old_path, &file_inode) !=
-	    EXIT_SUCCESS) {
+	ret_val |= get_inode_from_path(&superblock, old_parent_dir_path, &old_dir_inode);
+	ret_val |= get_inode_from_path(&superblock, new_parent_dir_path, &new_dir_inode);
+	ret_val |= get_inode_from_path(&superblock, old_path, &file_inode);
+	if (ret_val != EXIT_SUCCESS)
 		return ENOENT;
-	}
 
-	int ret_val = create_dir_entry(
+	ret_val = create_dir_entry(
 	        &superblock, new_dir_inode, file_inode->stats.st_ino, new_name);
-	if (ret_val != EXIT_SUCCESS) {
+	if (ret_val != EXIT_SUCCESS)
 		return ret_val;
-	}
 
 	ret_val = unlink_dir_entry(&superblock, old_dir_inode, old_name);
 	if (ret_val != EXIT_SUCCESS) {
