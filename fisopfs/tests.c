@@ -21,10 +21,7 @@ main()
 	system("make");
 	system("mkdir tests/to_mount");
 
-	if (fork() == 0) {
-		system("./fisopfs tests/to_mount/ -f");
-		return 0;
-	}
+	system("./fisopfs tests/to_mount/ ");
 
 	chdir(TEST_DIR);
 
