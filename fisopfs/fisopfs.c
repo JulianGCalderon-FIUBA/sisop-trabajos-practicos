@@ -163,11 +163,13 @@ fisopfs_write(const char *path,
 		return ENOENT;
 	}
 
-	ssize_t size_wrote =
+	ssize_t size_written =
 	        inode_write((char *) buffer, size, file_inode, offset);
 
+	printf("%li\n", size_written);
+
 	// return either bytes written, or error stored in size_wrote
-	return size_wrote;
+	return size_written;
 }
 
 
@@ -178,8 +180,7 @@ fisopfs_truncate(const char *path, off_t offset)
 	inode_t *inode;
 	if (get_inode_from_path(&superblock, path, &inode) != EXIT_SUCCESS)
 		return ENOENT;
-	inode_truncate(inode, offset);
-	return EXIT_SUCCESS;
+	return inode_truncate(inode, offset);
 }
 
 static int

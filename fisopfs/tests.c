@@ -29,7 +29,6 @@ main()
 
 	chdir(MOUNT_DIR);
 
-
 	system("sudo umount tests/to_mount");
 	system("rmdir tests/to_mount");
 }

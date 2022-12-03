@@ -43,19 +43,23 @@ readwrite_test(size_t size)
 	fread(read_buffer, sizeof(int), size, file);
 
 	compare_buffers(write_buffer, read_buffer, size);
+
+	fclose(file);
 }
 
 void
 readwrite_tobig_test()
 {
-	int write_buffer[10000];
-	fill_buffer(write_buffer, 10000);
+	int write_buffer[6143];
+	fill_buffer(write_buffer, 6143);
 
 	FILE *file = fopen("to_mount/readwrite_tobig.txt", "w+");
 
-	size_t written = fwrite(write_buffer, sizeof(int), 10000, file);
+	size_t written = fwrite(write_buffer, sizeof(int), 6000, file);
 
-	assert(strcmp(strerror(errno), "File to large"));
+	fclose(file);
+
+	assert(strcmp(strerror(errno), "File too large") == 0);
 }
 
 

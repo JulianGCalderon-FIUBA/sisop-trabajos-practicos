@@ -159,16 +159,9 @@ unlink_dir_entry(superblock_t *superblock, inode_t *dir, const char *name)
 	            dir,
 	            deleted_dirent_off);
 
-	// mark last dir_entry as invalid
-	last_dir_entry.name[0] = '\0';
-	last_dir_entry.inode_id = -1;
-	inode_write((char *) &last_dir_entry,
-	            sizeof(dir_entry_t),
-	            dir,
-	            dir->stats.st_size - sizeof(dir_entry_t));
 
 	// delete last dir_entry
-	inode_truncate(dir, sizeof(dir_entry_t));
+	inode_truncate(dir, dir->stats.st_size - sizeof(dir_entry_t));
 
 	// free inode if n_links = 0;
 	inode_t *deleted;
