@@ -88,6 +88,8 @@ void init_inode(inode_t *inode, int inode_id);
 /*
  * Stores in inode_dest a pointer to the inode, or NULL in case of error.
  */
-int get_inode_from_path(superblock_t *superblock, const char* path, inode_t **inode_dest);
+int get_inode_from_path(superblock_t *superblock,
+                        const char *path,
+                        inode_t **inode_dest);
 
 #endif  // INODE_H

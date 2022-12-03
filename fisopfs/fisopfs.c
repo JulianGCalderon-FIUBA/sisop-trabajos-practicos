@@ -195,8 +195,12 @@ fisopfs_rename(const char *old_path, const char *new_path)
 	inode_t *old_dir_inode;
 	inode_t *new_dir_inode;
 	inode_t *file_inode;
-	ret_val |= get_inode_from_path(&superblock, old_parent_dir_path, &old_dir_inode);
-	ret_val |= get_inode_from_path(&superblock, new_parent_dir_path, &new_dir_inode);
+	ret_val |= get_inode_from_path(&superblock,
+	                               old_parent_dir_path,
+	                               &old_dir_inode);
+	ret_val |= get_inode_from_path(&superblock,
+	                               new_parent_dir_path,
+	                               &new_dir_inode);
 	ret_val |= get_inode_from_path(&superblock, old_path, &file_inode);
 	if (ret_val != EXIT_SUCCESS)
 		return ENOENT;

@@ -353,7 +353,6 @@ inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 		return -EFBIG;
 	}
 
-
 	// if offset is bigger than size
 	if (file_offset > inode->stats.st_size)
 		return -EINVAL;
