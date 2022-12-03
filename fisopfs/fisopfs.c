@@ -215,9 +215,21 @@ fisopfs_rename(const char *old_path, const char *new_path)
 	return ret_val;
 }
 
+static struct fuse_operations operations = {
+	.getattr = fisopfs_getattr,
+	.readdir = fisopfs_readdir,
+	.mkdir = fisopfs_mkdir,
+	.rmdir = fisopfs_rmdir,
+	.unlink = fisopfs_unlink,
+	.create = fisopfs_create,
+	.read = fisopfs_read,
+	.write = fisopfs_write,
+	.truncate = fisopfs_truncate,
+	.rename = fisopfs_rename,
+};
 
 void
-fisopfs_destroy(void *private_data)
+serialize()
 {
 	int data_fd = open("data.fisopfs", O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
 	if (data_fd == -1)
@@ -282,20 +294,6 @@ fisopfs_destroy(void *private_data)
 }
 
 
-static struct fuse_operations operations = {
-	.getattr = fisopfs_getattr,
-	.readdir = fisopfs_readdir,
-	.mkdir = fisopfs_mkdir,
-	.rmdir = fisopfs_rmdir,
-	.unlink = fisopfs_unlink,
-	.create = fisopfs_create,
-	.read = fisopfs_read,
-	.write = fisopfs_write,
-	.truncate = fisopfs_truncate,
-	.rename = fisopfs_rename,
-	.destroy = fisopfs_destroy,
-};
-
 int
 deserialize(char *path)
 {
@@ -309,7 +307,6 @@ deserialize(char *path)
 	if (read(data_fd, bitmap, sizeof(bitmap128_t)) != sizeof(bitmap128_t)) {
 		return -1;
 	};
-
 
 	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
 		if (bitmap_getbit(bitmap, i))
@@ -377,6 +374,8 @@ main(int argc, char *argv[])
 		// initialise root_dir
 		create_dir(&superblock, "/", ROOT_DIR_INODE_ID, ALL_PERMISSIONS);
 	}
+
+	atexit(serialize);
 
 	return fuse_main(argc, argv, &operations, NULL);
 }
