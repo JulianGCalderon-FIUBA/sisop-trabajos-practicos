@@ -78,9 +78,9 @@ main()
 	readwrite_test(5120);
 	printf("ok\n");
 
-	// printf("tobig readwrite\n");
-	// readwrite_tobig_test();
-	// printf("ok\n");
+	printf("tobig readwrite\n");
+	readwrite_tobig_test();
+	printf("ok\n");
 
 	return 0;
 }

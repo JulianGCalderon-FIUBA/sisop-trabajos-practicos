@@ -37,10 +37,9 @@ read_directory(inode_t *dir, size_t offset, dir_entry_t *dir_entry_dest)
 	if (ret_val != sizeof(dir_entry_t)) {
 		dir_entry_dest->name[0] = '\0';
 		dir_entry_dest->inode_id = -1;
-		return ret_val >= 0
-		               ? -1
-		               : -ret_val;  // if inode_read didn't return an error
-		                            // (partial read), return -1 (generic error)
+
+		// if inode_read didn't return an error (partial read), return -1 (generic error)
+		return ret_val >= 0 ? -1 : -ret_val;
 	}
 	return EXIT_SUCCESS;
 }
@@ -52,26 +51,29 @@ read_directory(inode_t *dir, size_t offset, dir_entry_t *dir_entry_dest)
 int
 _get_iid_from_path(superblock_t *superblock, inode_t *dir, char *path)
 {
-	if (path[0] == '\0')  // path was '/' terminated, return the dir
+	// path was '/' terminated, return the dir
+	if (path[0] == '\0')
 		return dir->stats.st_ino;
 
 	char *slash_pos = strchrnul(path, '/');
-	bool end_of_path =
-	        !*slash_pos;  // true if slash_pos points to \0, false otherwise
+	// true if slash_pos points to \0, false otherwise
+	bool end_of_path = !*slash_pos;
 	*slash_pos = '\0';
 
 	size_t offset = 0;
 	dir_entry_t dir_entry;
 	inode_t *subdir;
 	read_directory(dir, offset, &dir_entry);
-	while (dir_entry.inode_id >= 0) {  // inode_id < 0 indicates invalid inode
+	// inode_id < 0 indicates invalid inode
+	while (dir_entry.inode_id >= 0) {
 		offset += sizeof(dir_entry_t);
-		if (strncmp(dir_entry.name, path, MAX_FILENAME_LENGTH) !=
-		    0) {  // the path doesn't match
+		// the path doesn't match
+		if (strncmp(dir_entry.name, path, MAX_FILENAME_LENGTH) != 0) {
 			read_directory(dir, offset, &dir_entry);
 			continue;
 		}
-		if (end_of_path)  // end of path, file or dir was found
+		// end of path, file or dir was found
+		if (end_of_path)
 			return dir_entry.inode_id;
 
 		// expecting a dir to continue the search
@@ -79,9 +81,11 @@ _get_iid_from_path(superblock_t *superblock, inode_t *dir, char *path)
 		if (S_ISDIR(subdir->stats.st_mode)) {
 			return _get_iid_from_path(superblock, subdir, slash_pos + 1);
 		}
-		break;  // expected a directory (could be a parent dir) but a file was found instead
+		// expected a directory (could be a parent dir) but a file was found instead
+		break;
 	}
-	return -ENOENT;  // ERROR: No such file or directory
+	// ERROR: No such file or directory
+	return -ENOENT;
 }
 
 /*
@@ -183,8 +187,6 @@ unlink_dir_entry(superblock_t *superblock, inode_t *dir, const char *name)
 int
 init_dir(superblock_t *superblock, inode_t *dir, int parent_inode_id, mode_t mode)
 {
-	// one link from parent and another one from '.'
-	dir->stats.st_nlink = 2;
 	dir->stats.st_mode = S_IFDIR | mode;
 	// set dir_entries
 	int ret_val = create_dir_entry(superblock, dir, dir->stats.st_ino, ".");
@@ -218,7 +220,6 @@ create_dir(superblock_t *superblock, const char *name, int parent_inode_id, mode
 	            EXIT_SUCCESS &&
 	    dir_inode_id != ROOT_DIR_INODE_ID) {
 		create_dir_entry(superblock, parent_dir, dir_inode_id, name);
-		++parent_dir->stats.st_nlink;
 	}
 
 	return dir->stats.st_ino;

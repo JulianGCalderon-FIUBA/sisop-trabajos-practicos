@@ -180,15 +180,17 @@ fisopfs_readdir(const char *path,
 	dir_entry_t dir_entry;
 	read_directory(directory, offset, &dir_entry);
 	offset += sizeof(dir_entry_t);
-	while (dir_entry.inode_id >= 0) {  // dir_entry is valid
+	// dir_entry is valid
+	while (dir_entry.inode_id >= 0) {
+		// get dir_entry's inode
 		assert(get_inode_from_iid(&superblock,
 		                          dir_entry.inode_id,
-		                          &dir_entry_inode) ==
-		       EXIT_SUCCESS);  // get dir_entry's inode
+		                          &dir_entry_inode) == EXIT_SUCCESS);
 		if (filler(buffer, dir_entry.name, &dir_entry_inode->stats, offset)) {
 			printf("[debug] fisopfs_readdir: filler returned "
 			       "something other than 0\n");
-			return 1;  // ERROR, filler's buffer is full
+			// ERROR, filler's buffer is full
+			return 1;
 		}
 
 		read_directory(directory, offset, &dir_entry);
@@ -239,7 +241,8 @@ fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *file_info)
 	printf("[debug] fisopfs_create(%s, 0%o)\n", path, mode);
 
 	if (get_iid_from_path(&superblock, path) >= 0)
-		return EEXIST;  // file exists
+		// file exists
+		return EEXIST;
 
 	char parent_dir_path[PATH_MAX];
 	char *file_name = split_path(path, parent_dir_path);
@@ -341,6 +344,19 @@ fisopfs_rename(const char *old_path, const char *new_path)
 	return ret_val;
 }
 
+static int
+fisopfs_utimens(const char *path, const struct timespec tv[2])
+{
+	inode_t *inode;
+	if (get_inode_from_path(&superblock, path, &inode) != EXIT_SUCCESS) {
+		return ENOENT;
+	}
+
+	inode->stats.st_atim = tv[0];
+	inode->stats.st_mtim = tv[1];
+
+	return EXIT_SUCCESS;
+}
 
 void *
 fisopfs_init(struct fuse_conn_info *conn)
@@ -376,6 +392,7 @@ static struct fuse_operations operations = {
 	.rename = fisopfs_rename,
 	.init = fisopfs_init,
 	.destroy = fisopfs_destroy,
+	.utimens = fisopfs_utimens,
 };
 
 
@@ -384,20 +401,3 @@ main(int argc, char *argv[])
 {
 	return fuse_main(argc, argv, &operations, NULL);
 }
-
-// fuse operations que probablemente haya que implementar:
-// struct fuse_operations {
-
-/*  *
- * Change the access and modification times of a file with
- * nanosecond resolution
- *
- * This supersedes the old utime() interface.  New applications
- * should use this.
- *
- * See the utimensat(2) man page for details.
- *
- * Introduced in version 2.6
- */
-//	int (*utimens) (const char *, const struct timespec tv[2]);
-//};

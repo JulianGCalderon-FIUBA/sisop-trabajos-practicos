@@ -30,8 +30,7 @@ get_inode_from_iid(superblock_t *superblock, int inode_id, inode_t **inode_dest)
 	int table_num = inode_id / INODES_PER_TABLE;
 
 	// if table is free, there is no inode
-	if (bitmap_getbit(&superblock->free_tables_bitmap,
-	                  table_num)) {  // table is free and therefore empty
+	if (bitmap_getbit(&superblock->free_tables_bitmap, table_num)) {
 		*inode_dest = NULL;
 		return ENOENT;
 	}
@@ -59,7 +58,8 @@ malloc_inode_table(superblock_t *superblock)
 {
 	int free_table_num =
 	        bitmap_count_leading_zeros(&superblock->free_tables_bitmap);
-	if (free_table_num < 0)  // The array superblock->inode_tables is full
+	// The array superblock->inode_tables is full
+	if (free_table_num < 0)
 		return -ENOMEM;
 
 	inode_table_t *inode_table = mmap(NULL,
@@ -135,16 +135,14 @@ init_inode(inode_t *inode, int inode_id)
 {
 	struct stat *inode_st = &inode->stats;
 
-	inode_st->st_nlink = 1;
-	// podríamos usar umask para ver los default
+	inode_st->st_nlink = 0;
+	inode_st->st_mode = 0;
 	inode_st->st_blocks = 0;
 	inode_st->st_ino = inode_id;
 	inode_st->st_size = 0;
 
-	// CORREGIR: deberíamos setearlo al usuario actual (getcuruid? algo así)
-	inode_st->st_uid = 1000;
-	// CORREGIR: deberíamos setearlo al grupo actual
-	inode_st->st_gid = 1000;
+	inode_st->st_uid = getuid();
+	inode_st->st_gid = getgid();
 
 	time(&inode_st->st_mtime);
 	time(&inode_st->st_ctime);
