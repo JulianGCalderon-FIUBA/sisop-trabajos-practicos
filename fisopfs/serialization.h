@@ -3,7 +3,7 @@
 
 #include "inode.h"
 
-void serialize(superblock_t *superblock, const char *path);
+int serialize(superblock_t *superblock, const char *path);
 int deserialize(superblock_t *superblock, const char *path);
 
 #endif  // SERIALIZATION_H

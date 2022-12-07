@@ -34,7 +34,7 @@ readwrite_test(size_t size)
 	int write_buffer[size];
 	fill_buffer(write_buffer, size);
 
-	FILE *file = fopen("to_mount/readwrite.txt", "w+");
+	FILE *file = fopen("to_mount/readwrite.bin", "w+");
 
 	fwrite(write_buffer, sizeof(int), size, file);
 	fseek(file, 0, SEEK_SET);
@@ -53,7 +53,7 @@ readwrite_tobig_test()
 	int write_buffer[6143];
 	fill_buffer(write_buffer, 6143);
 
-	FILE *file = fopen("to_mount/readwrite_tobig.txt", "w+");
+	FILE *file = fopen("to_mount/readwrite_tobig.bin", "w+");
 
 	size_t written = fwrite(write_buffer, sizeof(int), 6000, file);
 

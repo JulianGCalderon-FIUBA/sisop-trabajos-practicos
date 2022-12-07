@@ -5,17 +5,17 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-void
+int
 serialize(superblock_t *superblock, const char *path)
 {
 	int data_fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
 	if (data_fd == -1)
-		return;
+		return -1;
 
 	bitmap128_t *bitmap = &superblock->free_tables_bitmap;
 
 	if (write(data_fd, bitmap, sizeof(bitmap128_t)) != sizeof(bitmap128_t))
-		return;
+		return -1;
 
 
 	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
@@ -24,7 +24,7 @@ serialize(superblock_t *superblock, const char *path)
 
 		inode_table_t *table = superblock->inode_tables[i];
 		if (write(data_fd, table, PAGE_SIZE) != PAGE_SIZE)
-			return;
+			return -1;
 	}
 
 
@@ -49,12 +49,14 @@ serialize(superblock_t *superblock, const char *path)
 			for (int k = 0; k < inode->stats.st_blocks; k++) {
 				char *page = inode->pages[k];
 				if (write(data_fd, page, PAGE_SIZE) != PAGE_SIZE)
-					return;
+					return -1;
 			}
 		}
 	}
 
 	close(data_fd);
+
+	return 0;
 }
 
 
