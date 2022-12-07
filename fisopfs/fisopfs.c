@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-
 #define SERIAL_PATH "data.fisopfs"
 #define ALL_PERMISSIONS (S_IRWXU | S_IRWXG | S_IRWXO)
 
@@ -98,6 +97,7 @@ fisopfs_unlink(const char *path)
 	    EXIT_SUCCESS) {
 		return ENOENT;
 	}
+
 	return unlink_dir_entry(&superblock, dir, childs_name);
 }
 
@@ -105,6 +105,15 @@ static int
 fisopfs_rmdir(const char *path)
 {
 	printf("[debug] fisopfs_rmdir(%s)\n", path);
+
+	inode_t *dir;
+	if (get_inode_from_path(&superblock, path, &dir) != EXIT_SUCCESS) {
+		return ENOENT;
+	}
+	if (dir->stats.st_size > 2 * sizeof(dir_entry_t)) {
+		errno = ENOTEMPTY;
+		return -EXIT_FAILURE;
+	}
 	return fisopfs_unlink(path);
 }
 
@@ -185,11 +194,12 @@ fisopfs_truncate(const char *path, off_t offset)
 	return inode_truncate(inode, offset);
 }
 
+
 static int
-fisopfs_rename(const char *old_path, const char *new_path)
+fisopfs_link(const char *old_path, const char *new_path)
 {
 	char old_parent_dir_path[PATH_MAX];
-	char *old_name = split_path(old_path, old_parent_dir_path);
+	split_path(old_path, old_parent_dir_path);
 
 	char new_parent_dir_path[PATH_MAX];
 	char *new_name = split_path(new_path, new_parent_dir_path);
@@ -208,14 +218,27 @@ fisopfs_rename(const char *old_path, const char *new_path)
 	if (ret_val != EXIT_SUCCESS)
 		return ENOENT;
 
-	ret_val = create_dir_entry(
+	return create_dir_entry(
 	        &superblock, new_dir_inode, file_inode->stats.st_ino, new_name);
-	if (ret_val != EXIT_SUCCESS)
-		return ret_val;
-
-	ret_val = unlink_dir_entry(&superblock, old_dir_inode, old_name);
-	return ret_val;
 }
+
+static int
+fisopfs_rename(const char *old_path, const char *new_path)
+{
+	int ret_val = fisopfs_link(old_path, new_path);
+	if (ret_val != EXIT_SUCCESS) {
+		return ret_val;
+	}
+
+	char old_parent_dir_path[PATH_MAX];
+	char *old_name = split_path(old_path, old_parent_dir_path);
+	inode_t *old_dir_inode;
+	// if link did not fail, old_dir_inode exists.
+	get_inode_from_path(&superblock, old_parent_dir_path, &old_dir_inode);
+
+	return unlink_dir_entry(&superblock, old_dir_inode, old_name);
+}
+
 
 static int
 fisopfs_utimens(const char *path, const struct timespec tv[2])
@@ -234,7 +257,7 @@ fisopfs_utimens(const char *path, const struct timespec tv[2])
 void *
 fisopfs_init(struct fuse_conn_info *conn)
 {
-	if (deserialize(&superblock, SERIAL_PATH) == 0) {
+	if (deserialize(&superblock, SERIAL_PATH) == EXIT_SUCCESS) {
 		return NULL;
 	}
 
@@ -266,6 +289,7 @@ static struct fuse_operations operations = {
 	.init = fisopfs_init,
 	.destroy = fisopfs_destroy,
 	.utimens = fisopfs_utimens,
+	.link = fisopfs_link,
 };
 
 
