@@ -6,17 +6,13 @@
 #include <unistd.h>
 
 int
-serialize(superblock_t *superblock, const char *path)
+write_filesystem_data(superblock_t *superblock, int data_fd)
 {
-	int data_fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-	if (data_fd == -1)
-		return -1;
-
 	bitmap128_t *bitmap = &superblock->free_tables_bitmap;
 
-	if (write(data_fd, bitmap, sizeof(bitmap128_t)) != sizeof(bitmap128_t))
+	if (write(data_fd, bitmap, sizeof(bitmap128_t)) != sizeof(bitmap128_t)) {
 		return -1;
-
+	}
 
 	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
 		if (bitmap_getbit(bitmap, i))
@@ -26,59 +22,55 @@ serialize(superblock_t *superblock, const char *path)
 		if (write(data_fd, table, PAGE_SIZE) != PAGE_SIZE)
 			return -1;
 	}
+}
 
+int
+write_user_data(superblock_t *superblock, int data_fd)
+{
+	bitmap128_t *bitmap = &superblock->free_tables_bitmap;
 
 	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
 		if (bitmap_getbit(bitmap, i))
 			continue;
-
 
 		inode_table_t *table = superblock->inode_tables[i];
 
 		bitmap128_t *bitmap = &table->free_inodes_bitmap;
 		inode_t *inodes = table->inodes;
 
-
 		for (int j = 0; j < INODES_PER_TABLE; j++) {
 			if (bitmap_getbit(bitmap, j))
 				continue;
 
-
 			inode_t *inode = inodes + j;
-
-			for (int k = 0; k < inode->stats.st_blocks; k++) {
-				char *page = inode->pages[k];
-				if (write(data_fd, page, PAGE_SIZE) != PAGE_SIZE)
-					return -1;
-			}
+			if (write_inode_pages(inode, data_fd) == -1)
+				return -1;
 		}
 	}
-
-	close(data_fd);
-
-	return 0;
 }
 
+int
+write_inode_pages(inode_t *inode, int data_fd)
+{
+	for (int k = 0; k < inode->stats.st_blocks; k++) {
+		char *page = inode->pages[k];
+		if (write(data_fd, page, PAGE_SIZE) != PAGE_SIZE)
+			return -1;
+	}
+}
 
 int
-deserialize(superblock_t *superblock, const char *path)
+read_filesystem_data(superblock_t *superblock, int data_fd)
 {
-	int data_fd = open(path, O_RDONLY);
-	if (data_fd == -1) {
-		return -1;
-	}
-
 	bitmap128_t *bitmap = &superblock->free_tables_bitmap;
 
 	if (read(data_fd, bitmap, sizeof(bitmap128_t)) != sizeof(bitmap128_t)) {
 		return -1;
 	};
 
-
 	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
 		if (bitmap_getbit(bitmap, i))
 			continue;
-
 
 		inode_table_t *inode_table = mmap(NULL,
 		                                  PAGE_SIZE,
@@ -91,39 +83,81 @@ deserialize(superblock_t *superblock, const char *path)
 
 		superblock->inode_tables[i] = inode_table;
 	}
+}
 
+int
+read_user_data(superblock_t *superblock, int data_fd)
+{
+	bitmap128_t *bitmap = &superblock->free_tables_bitmap;
 
 	for (int i = 0; i < AMOUNT_OF_INODE_TABLES; i++) {
 		if (bitmap_getbit(bitmap, i))
 			continue;
 
-
 		inode_table_t *table = superblock->inode_tables[i];
 		bitmap128_t *table_bitmap = &(table->free_inodes_bitmap);
 		inode_t *table_inodes = table->inodes;
-
 
 		for (int j = 0; j < INODES_PER_TABLE; j++) {
 			if (bitmap_getbit(table_bitmap, j))
 				continue;
 
-
 			inode_t *inode = table_inodes + j;
 
-			for (int k = 0; k < inode->stats.st_blocks; k++) {
-				char *page = mmap(NULL,
-				                  PAGE_SIZE,
-				                  PROT_READ | PROT_WRITE,
-				                  MAP_ANONYMOUS | MAP_PRIVATE,
-				                  -1,
-				                  0);
-				if (read(data_fd, page, PAGE_SIZE) != PAGE_SIZE)
-					return -1;
-				inode->pages[k] = page;
+			if (read_inode_pages(inode, data_fd) != -1) {
+				return -1;
 			}
 		}
 	}
+}
 
+int
+read_inode_pages(inode_t *inode, int data_fd)
+{
+	for (int k = 0; k < inode->stats.st_blocks; k++) {
+		char *page = mmap(NULL,
+		                  PAGE_SIZE,
+		                  PROT_READ | PROT_WRITE,
+		                  MAP_ANONYMOUS | MAP_PRIVATE,
+		                  -1,
+		                  0);
+		if (read(data_fd, page, PAGE_SIZE) != PAGE_SIZE)
+			return -1;
+		inode->pages[k] = page;
+	}
+}
+
+int
+serialize(superblock_t *superblock, const char *path)
+{
+	int data_fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+	if (data_fd == -1)
+		return -1;
+
+	bitmap128_t *bitmap = &superblock->free_tables_bitmap;
+
+	if (write_filesystem_data(superblock, data_fd) == -1)
+		return -1;
+	if (write_user_data(superblock, data_fd) == -1)
+		return -1;
+	close(data_fd);
+	return 0;
+}
+
+int
+deserialize(superblock_t *superblock, const char *path)
+{
+	int data_fd = open(path, O_RDONLY);
+	if (data_fd == -1) {
+		return -1;
+	}
+
+	if (read_filesystem_data(superblock, data_fd) != -1) {
+		return -1;
+	}
+	if (read_user_data(superblock, data_fd) != -1) {
+		return -1;
+	}
 
 	close(data_fd);
 
