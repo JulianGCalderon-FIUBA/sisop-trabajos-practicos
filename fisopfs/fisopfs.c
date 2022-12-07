@@ -1,5 +1,10 @@
 #define FUSE_USE_VERSION 30
 #define _GNU_SOURCE
+#include "bitmap.h"
+#include "inode.h"
+#include "file.h"
+#include "dir.h"
+#include "serialization.h"
 
 #include <fuse.h>
 #include <errno.h>
@@ -9,17 +14,11 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "bitmap.h"
-#include "inode.h"
-#include "file.h"
-#include "dir.h"
-#include "serialization.h"
 
 #define SERIAL_PATH "data.fisopfs"
-
-superblock_t superblock;
 #define ALL_PERMISSIONS (S_IRWXU | S_IRWXG | S_IRWXO)
 
+superblock_t superblock;
 
 static int
 fisopfs_getattr(const char *path, struct stat *st)

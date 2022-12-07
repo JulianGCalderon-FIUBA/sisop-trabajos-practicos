@@ -6,6 +6,8 @@
         "bitmap.h": "c",
         "fcntl.h": "c",
         "fuse.h": "c",
-        "limits.h": "c"
+        "limits.h": "c",
+        "serialization.h": "c",
+        "types.h": "c"
     }
 }

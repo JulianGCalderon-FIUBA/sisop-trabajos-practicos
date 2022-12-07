@@ -1,7 +1,6 @@
 #ifndef INODE_H
 #define INODE_H
 
-#include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "bitmap.h"

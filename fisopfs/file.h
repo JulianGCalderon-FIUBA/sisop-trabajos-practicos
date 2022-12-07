@@ -1,6 +1,8 @@
 #ifndef FILE_H
 #define FILE_H
 #include "inode.h"
+#include <fuse.h>
+
 
 /*
  * Returns file's inode_id or negative error.

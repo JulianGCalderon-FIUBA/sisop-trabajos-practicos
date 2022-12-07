@@ -1,18 +1,13 @@
 #define _GNU_SOURCE
+#include "inode.h"
+#include "dir.h"
 
 #include <time.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <sys/mman.h>
-#include <linux/limits.h>
-#include <stdio.h>
 #include <unistd.h>
-
-#include "bitmap.h"
-#include "inode.h"
-#include "dir.h"
 
 
 int

@@ -2,8 +2,10 @@
 #define DIR_H
 
 #define ROOT_DIR_INODE_ID 0
-#include <sys/types.h>
+
 #include "inode.h"
+
+#include <sys/types.h>
 
 /*
  * Returns the dir_entry at offset through the dir_entry_dest parameter.

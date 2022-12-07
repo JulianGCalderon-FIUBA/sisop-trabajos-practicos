@@ -1,12 +1,13 @@
 #define _GNU_SOURCE
+#include "dir.h"
+#include "inode.h"
+
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <linux/limits.h>
-#include "inode.h"
-#include "dir.h"
 
 /*
  * Splits the path on the last forward slash.

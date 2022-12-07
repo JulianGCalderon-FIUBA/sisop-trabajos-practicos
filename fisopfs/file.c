@@ -1,15 +1,11 @@
 #define _DEFAULT_SOURCE  // for S_IFREG
 #include <fuse.h>        // for struct fuse_file_info
+#include "inode.h"
+#include "dir.h"
+
 #include <errno.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#include "inode.h"
-#include "dir.h"
-/*
-#ifndef S_IFREG
-#define S_IFREG  0100000
-#endif
-*/
 
 /*
  * Returns file's inode_id or negative error.
