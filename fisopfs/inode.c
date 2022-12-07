@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <time.h>
 #include <errno.h>
 #include <string.h>
@@ -6,10 +7,12 @@
 #include <stdbool.h>
 #include <sys/mman.h>
 #include <linux/limits.h>
+#include <stdio.h>
+#include <unistd.h>
+
 #include "bitmap.h"
 #include "inode.h"
 #include "dir.h"
-#include <stdio.h>
 
 
 int

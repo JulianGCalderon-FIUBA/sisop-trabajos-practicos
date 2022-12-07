@@ -3,6 +3,9 @@
         "unistd.h": "c",
         "errno.h": "c",
         "assert.h": "c",
-        "bitmap.h": "c"
+        "bitmap.h": "c",
+        "fcntl.h": "c",
+        "fuse.h": "c",
+        "limits.h": "c"
     }
 }
