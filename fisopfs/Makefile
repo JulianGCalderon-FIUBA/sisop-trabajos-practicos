@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS := -ggdb3 -O2 -Wall -std=c11 -D_FILE_OFFSET_BITS=64
-CFLAGS += -Wno-unused-function -Wvla bitmap.c dir.c file.c inode.c
+CFLAGS += -Wno-unused-function -Wvla bitmap.c dir.c file.c inode.c serialization.c
 
 # Flags for FUSE
 LDLIBS := $(shell pkg-config fuse --cflags --libs )
