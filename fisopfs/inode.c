@@ -10,10 +10,7 @@
 #include "inode.h"
 #include "dir.h"
 #include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdint.h>
-#include <sys/stat.h>
+
 
 int
 highest_page_number_for_size(off_t size)

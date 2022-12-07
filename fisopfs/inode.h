@@ -1,6 +1,10 @@
 #ifndef INODE_H
 #define INODE_H
 
+#include <stdint.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include "bitmap.h"
 
 #define MAX_FILENAME_LENGTH 128
 // amount of pages of memory that a file can point to. Max file size = PAGE_SIZE PAGES_PER_INODE
