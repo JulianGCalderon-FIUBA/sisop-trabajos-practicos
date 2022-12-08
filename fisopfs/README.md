@@ -56,7 +56,7 @@ Sistema de archivos tipo FUSE.
 - [ ] Escribir en un archivo 
     Escritura en el archivo prueba_archivo:
     
-    gaby@gaby:~/fisopfs$ seq 10 > to_mount/prueba_archivo
+        gaby@gaby:~/fisopfs$ seq 10 > to_mount/prueba_archivo
     
 
     Debug:
@@ -130,7 +130,7 @@ Sistema de archivos tipo FUSE.
 
     Creación de un directorio prueba con mkdir:
     
-        /fisopfs$ mkdir to_mount/prueba
+        gaby@gaby:~/fisopfs$ mkdir to_mount/prueba
 
     Debug:
     
@@ -187,13 +187,126 @@ Sistema de archivos tipo FUSE.
     Se eliminó el directorio, al ejecutar ls no se intenta obtener los atributos del directorio eliminado ni leerlo.
 
 - [ ] Crear un archivo dentro de un directorio
+    Creación de "prueba_archivo" en la carpeta "prueba":
+        gaby@gaby:~/fisopfs$ touch to_mount/prueba/prueba_archivo
+    
+    Debug:
+        [debug] fisopfs_getattr(/prueba)
+        [debug] fisopfs_getattr(/prueba/prueba_archivo)
+        [debug] fisopfs_create(/prueba/prueba_archivo, 0100664)
+        [debug] fisopfs_getattr(/prueba/prueba_archivo)
+        [debug] fisopfs_getattr(/prueba/prueba_archivo)
+
+    Verificación con ls dentro de la carpeta prueba:
+        gaby@gaby:~/fisopfs$ ls to_mount/prueba/
+        prueba_archivo
+
+    Debug:
+        [debug] fisopfs_getattr(/prueba)
+        [debug] fisopfs_readdir(/prueba)
+        [debug] fisopfs_getattr(/prueba/prueba_archivo)
+        [debug] fisopfs_readdir(/prueba)
+
+
+    Al hacer ls de la carpeta se lista el nuevo archivo y se obtienen sus atributos con getattr.
+
 
 - [ ] Borrar un directorio (y su contenido)
+
+    Eliminación del directorio prueba que contiene al archivo prueba_archivo:
+    gaby@gaby:~/fisopfs$ rm -r to_mount/prueba/
+
+    Debug:
+        [debug] fisopfs_getattr(/prueba)
+        [debug] fisopfs_readdir(/prueba)
+        [debug] fisopfs_getattr(/prueba)
+        [debug] fisopfs_readdir(/prueba)
+        [debug] fisopfs_readdir(/prueba)
+        [debug] fisopfs_getattr(/prueba/prueba_archivo)
+        [debug] fisopfs_unlink(/prueba/prueba_archivo)
+        [debug] fisopfs_getattr(/prueba)
+        [debug] fisopfs_rmdir(/prueba)
+        [debug] fisopfs_unlink(/prueba)
+
+    Verificación con ls de la eliminación:
+        gaby@gaby:~/fisopfs$ ls to_mount/
+    
+    Debug:
+        [debug] fisopfs_getattr(/)
+        [debug] fisopfs_readdir(/)
+        [debug] fisopfs_readdir(/)
+
+    Al eliminar el directorio se hace un unlink del contenido de la carpeta y luego de la carpeta, para finalmente un rmdir de la carpeta. Se confirma la eliminación al ejecutar ls, dado que no se lista la carpeta.
+
+
 - [ ] Crear un directorio dentro de directorio
+    Creación del directorio hijo dentro del directorio padre:   
+        gaby@gaby:~/fisopfs$ mkdir to_mount/padre
+        gaby@gaby:~/fisopfs$ mkdir to_mount/padre/hijo
+
+    Debug:
+        [debug] fisopfs_getattr(/padre)
+        [debug] fisopfs_mkdir(/padre)
+        [debug] fisopfs_getattr(/padre)
+
+       
+        [debug] fisopfs_getattr(/padre)
+        [debug] fisopfs_getattr(/padre/hijo)
+        [debug] fisopfs_mkdir(/padre/hijo)
+        [debug] fisopfs_getattr(/padre/hijo)
+
+
+    Verificación con ls de la creación del directorio con stat:
+        gaby@gaby:~/fisopfs$ stat to_mount/padre/hijo
+          File: to_mount/padre/hijo
+          Size: 264       	Blocks: 1          IO Block: 4096   directory
+        Device: 31h/49d	Inode: 3           Links: 2
+        Access: (0775/drwxrwxr-x)  Uid: ( 1000/    gaby)   Gid: ( 1000/    gaby)
+        Access: 2022-12-08 16:27:04.000000000 -0300
+        Modify: 2022-12-08 16:27:04.000000000 -0300
+        Change: 2022-12-08 16:27:04.000000000 -0300
+         Birth: -
+
+    Debug:
+        [debug] fisopfs_getattr(/padre)
+        [debug] fisopfs_getattr(/padre/hijo)
+
+    El directorio fue creado exitosamente dentro de la carpeta padre.
+
+
 - [ ] Leer directorios internos 
+    Lectura del archivo dentro del directorio hijo:
+        gaby@gaby:~/fisopfs$ seq 10 > to_mount/padre/hijo/archivo
+        gaby@gaby:~/fisopfs$ cat to_mount/padre/hijo/archivo 
+        1
+        2
+        3
+        4
+        5
+        6
+        7
+        8
+        9
+        10
+    
+    Debug:
+        [debug] fisopfs_getattr(/padre)
+        [debug] fisopfs_getattr(/padre/hijo)
+        [debug] fisopfs_getattr(/padre/hijo/archivo)
+        [debug] fisopfs_create(/padre/hijo/archivo, 0100664)
+        [debug] fisopfs_getattr(/padre/hijo/archivo)
+
+
+        [debug] fisopfs_getattr(/padre)
+        [debug] fisopfs_getattr(/padre/hijo)
+        [debug] fisopfs_getattr(/padre/hijo/archivo)
+        [debug] fisopfs_read(/padre/hijo/archivo, 0, 4096)
+
+    Se pudo leer correctamente del archivo que está en un directorio interno.
+
+
+
 - [ ] Reutilización de inodo
-- [ ] Acceder con un path
-- [ ] Acceder con un inodo
 
 # Funcionalidad
 
