@@ -8,18 +8,22 @@ Sistema de archivos tipo FUSE.
 - [ ] Creación de un archivo
 
     Creación del archivo con touch:
+    
         gaby@gaby:~/fisopfs$ touch to_mount/prueba_archivo
 
     Debug:
+    
         [debug] fisopfs_getattr(/prueba_archivo)
         [debug] fisopfs_getattr(/prueba_archivo)
         [debug] fisopfs_getattr(/)
  
     Verificación con ls de la creación:
+    
         gaby@gaby:~/fisopfs$ ls to_mount/
         prueba_archivo
 
     Debug:
+    
         [debug] fisopfs_getattr(/)
         [debug] fisopfs_readdir(/)
         [debug] fisopfs_getattr(/prueba_archivo)
@@ -30,6 +34,7 @@ Sistema de archivos tipo FUSE.
 
 - [ ] Stats del archivo
     Estadísticas del archivo prueba_archivo con stat:
+    
         gaby@gaby:~/fisopfs$ stat to_mount/prueba_archivo 
           File: to_mount/prueba_archivo
           Size: 0         	Blocks: 0          IO Block: 4096   regular empty file
@@ -41,6 +46,7 @@ Sistema de archivos tipo FUSE.
          Birth: -
     
     Debug:
+    
         [debug] fisopfs_getattr(/prueba_archivo)
     
 
@@ -49,10 +55,12 @@ Sistema de archivos tipo FUSE.
 
 - [ ] Escribir en un archivo 
     Escritura en el archivo prueba_archivo:
+    
     gaby@gaby:~/fisopfs$ seq 10 > to_mount/prueba_archivo
     
 
     Debug:
+    
         [debug] fisopfs_getattr(/prueba_archivo)
         [debug] fisopfs_truncate(/prueba_archivo, 0)
         [debug] fisopfs_getattr(/prueba_archivo)
@@ -73,6 +81,7 @@ Sistema de archivos tipo FUSE.
     
 - [ ] Leer en un archivo
     Lectura del archivo prueba_archivo con cat:
+    
         gaby@gaby:~/fisopfs$ cat to_mount/prueba_archivo 
         1
         2
@@ -86,6 +95,7 @@ Sistema de archivos tipo FUSE.
         10
     
     Debug:
+    
         [debug] fisopfs_getattr(/prueba_archivo)
         [debug] fisopfs_read(/prueba_archivo, 0, 4096)
     
@@ -95,16 +105,20 @@ Sistema de archivos tipo FUSE.
 - [ ] Borrar un archivo
     
     Eliminación del archivo con rm:
+    
         gaby@gaby:~/fisopfs$ rm to_mount/prueba_archivo
     
     Debug:
+    
         [debug] fisopfs_getattr(/prueba_archivo)
         [debug] fisopfs_unlink(/prueba_archivo)
 
     Verificación con ls:
+    
         gaby@gaby:~/fisopfs$ ls to_mount/
     
     Debug:
+    
         [debug] fisopfs_getattr(/)
         [debug] fisopfs_readdir(/)
         [debug] fisopfs_readdir(/)
@@ -115,14 +129,17 @@ Sistema de archivos tipo FUSE.
 - [ ] Crear un directorio
 
     Creación de un directorio prueba con mkdir:
+    
         /fisopfs$ mkdir to_mount/prueba
 
     Debug:
+    
         [debug] fisopfs_getattr(/prueba)
         [debug] fisopfs_mkdir(/prueba)
         [debug] fisopfs_getattr(/prueba)
 
     Verificación con ls -al:
+    
         gaby@gaby:~/fisopfs$ ls -al to_mount/
         total 5
         drwxrwxrwx 13 gaby gaby  396 Dec  6 23:01 .
@@ -130,6 +147,7 @@ Sistema de archivos tipo FUSE.
         drwxrwxr-x  2 gaby gaby  264 Dec  7 17:09 prueba
 
     Debug:
+    
         [debug] fisopfs_getattr(/)
         [debug] fisopfs_readdir(/)
         [debug] fisopfs_getattr(/)
@@ -140,9 +158,11 @@ Sistema de archivos tipo FUSE.
 
 - [ ] Borrar un directorio
     Eliminación del directorio con rm:
+    
         gaby@gaby:~/fisopfs$ rm -r to_mount/prueba/
 
     Debug:
+    
         [debug] fisopfs_getattr(/prueba)
         [debug] fisopfs_readdir(/prueba)
         [debug] fisopfs_readdir(/prueba)
@@ -151,12 +171,14 @@ Sistema de archivos tipo FUSE.
         [debug] fisopfs_unlink(/prueba)
  
     Verificación con ls -al:
+    
         gaby@gaby:~/fisopfs$ ls -al to_mount/
         total 5
         drwxrwxrwx 14 gaby gaby  264 Dec  6 23:01 .
         drwxrwxr-x  5 gaby gaby 4096 Dec  7 16:58 ..
 
     Debug:
+    
         [debug] fisopfs_getattr(/)
         [debug] fisopfs_readdir(/)
         [debug] fisopfs_getattr(/)
