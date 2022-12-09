@@ -187,10 +187,13 @@ Sistema de archivos tipo FUSE.
     Se eliminó el directorio, al ejecutar ls no se intenta obtener los atributos del directorio eliminado ni leerlo.
 
 - [ ] Crear un archivo dentro de un directorio
+
     Creación de "prueba_archivo" en la carpeta "prueba":
+    
         gaby@gaby:~/fisopfs$ touch to_mount/prueba/prueba_archivo
     
     Debug:
+    
         [debug] fisopfs_getattr(/prueba)
         [debug] fisopfs_getattr(/prueba/prueba_archivo)
         [debug] fisopfs_create(/prueba/prueba_archivo, 0100664)
@@ -198,10 +201,12 @@ Sistema de archivos tipo FUSE.
         [debug] fisopfs_getattr(/prueba/prueba_archivo)
 
     Verificación con ls dentro de la carpeta prueba:
+    
         gaby@gaby:~/fisopfs$ ls to_mount/prueba/
         prueba_archivo
 
     Debug:
+    
         [debug] fisopfs_getattr(/prueba)
         [debug] fisopfs_readdir(/prueba)
         [debug] fisopfs_getattr(/prueba/prueba_archivo)
@@ -214,9 +219,11 @@ Sistema de archivos tipo FUSE.
 - [ ] Borrar un directorio (y su contenido)
 
     Eliminación del directorio prueba que contiene al archivo prueba_archivo:
-    gaby@gaby:~/fisopfs$ rm -r to_mount/prueba/
+    
+        gaby@gaby:~/fisopfs$ rm -r to_mount/prueba/
 
     Debug:
+    
         [debug] fisopfs_getattr(/prueba)
         [debug] fisopfs_readdir(/prueba)
         [debug] fisopfs_getattr(/prueba)
@@ -229,9 +236,11 @@ Sistema de archivos tipo FUSE.
         [debug] fisopfs_unlink(/prueba)
 
     Verificación con ls de la eliminación:
+    
         gaby@gaby:~/fisopfs$ ls to_mount/
     
     Debug:
+    
         [debug] fisopfs_getattr(/)
         [debug] fisopfs_readdir(/)
         [debug] fisopfs_readdir(/)
@@ -240,11 +249,14 @@ Sistema de archivos tipo FUSE.
 
 
 - [ ] Crear un directorio dentro de directorio
+
     Creación del directorio hijo dentro del directorio padre:   
+    
         gaby@gaby:~/fisopfs$ mkdir to_mount/padre
         gaby@gaby:~/fisopfs$ mkdir to_mount/padre/hijo
 
     Debug:
+    
         [debug] fisopfs_getattr(/padre)
         [debug] fisopfs_mkdir(/padre)
         [debug] fisopfs_getattr(/padre)
@@ -257,6 +269,7 @@ Sistema de archivos tipo FUSE.
 
 
     Verificación con ls de la creación del directorio con stat:
+    
         gaby@gaby:~/fisopfs$ stat to_mount/padre/hijo
           File: to_mount/padre/hijo
           Size: 264       	Blocks: 1          IO Block: 4096   directory
@@ -268,6 +281,7 @@ Sistema de archivos tipo FUSE.
          Birth: -
 
     Debug:
+    
         [debug] fisopfs_getattr(/padre)
         [debug] fisopfs_getattr(/padre/hijo)
 
@@ -275,7 +289,9 @@ Sistema de archivos tipo FUSE.
 
 
 - [ ] Leer directorios internos 
+
     Lectura del archivo dentro del directorio hijo:
+    
         gaby@gaby:~/fisopfs$ seq 10 > to_mount/padre/hijo/archivo
         gaby@gaby:~/fisopfs$ cat to_mount/padre/hijo/archivo 
         1
@@ -290,6 +306,7 @@ Sistema de archivos tipo FUSE.
         10
     
     Debug:
+    
         [debug] fisopfs_getattr(/padre)
         [debug] fisopfs_getattr(/padre/hijo)
         [debug] fisopfs_getattr(/padre/hijo/archivo)
@@ -304,9 +321,6 @@ Sistema de archivos tipo FUSE.
 
     Se pudo leer correctamente del archivo que está en un directorio interno.
 
-
-
-- [ ] Reutilización de inodo
 
 # Funcionalidad
 
