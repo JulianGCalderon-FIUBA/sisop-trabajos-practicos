@@ -437,5 +437,7 @@ int
 get_inode_from_path(superblock_t *superblock, const char *path, inode_t **inode_dest)
 {
 	int inode_id = get_iid_from_path(superblock, path);
+	if (inode_id < 0)
+		return -inode_id;
 	return get_inode_from_iid(superblock, inode_id, inode_dest);
 }
