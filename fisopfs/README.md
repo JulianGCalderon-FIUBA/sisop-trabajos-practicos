@@ -60,10 +60,14 @@ Sistema de archivos tipo FUSE.
     
 
     Debug:
-    
+            
         [debug] fisopfs_getattr(/prueba_archivo)
         [debug] fisopfs_truncate(/prueba_archivo, 0)
         [debug] fisopfs_getattr(/prueba_archivo)
+        [debug] fisopfs_flush
+        [debug] fisopfs_write(/prueba_archivo, 0, 21)
+        [debug] fisopfs_flush
+
 
     Verificación con stat de la escritura:
 
@@ -77,7 +81,7 @@ Sistema de archivos tipo FUSE.
         Change: 2022-12-07 16:35:48.000000000 -0300
         Birth: -
 
-    Se pudo escribir correctamente los 10 números generados por seq en el archivo prueba_archivo.
+    Se pudo escribir correctamente los 10 números generados por seq en el archivo prueba_archivo. Al ya existir el archivo donde se deseaba escribir, se llama a truncate en lugar de create, para la serialización se llama además a la operación flush.
     
 - [ ] Leer en un archivo
     Lectura del archivo prueba_archivo con cat:
@@ -310,8 +314,13 @@ Sistema de archivos tipo FUSE.
         [debug] fisopfs_getattr(/padre)
         [debug] fisopfs_getattr(/padre/hijo)
         [debug] fisopfs_getattr(/padre/hijo/archivo)
+        [debug] error: No such file or directory
         [debug] fisopfs_create(/padre/hijo/archivo, 0100664)
         [debug] fisopfs_getattr(/padre/hijo/archivo)
+        [debug] fisopfs_flush
+        [debug] fisopfs_write(/padre/hijo/archivo, 0, 21)
+        [debug] fisopfs_flush
+
 
 
         [debug] fisopfs_getattr(/padre)
@@ -320,6 +329,210 @@ Sistema de archivos tipo FUSE.
         [debug] fisopfs_read(/padre/hijo/archivo, 0, 4096)
 
     Se pudo leer correctamente del archivo que está en un directorio interno.
+    Al no existir el archivo durante el redireccionamiento, se crea para luego permitir la escritura.
+
+
+
+-----------------------------------------------------------------------------------
+    
+    Errores
+
+- [ ] Intentar eliminar un directorio:
+    Se intenta eliminar un directorio con rm sin el parámetro correspondiente:
+    
+        gaby@gaby:~/fisopfs$ rm to_mount/prueba/
+        rm: cannot remove 'to_mount/prueba/': Is a directory
+
+    Debug:
+
+        [debug] fisopfs_getattr(/prueba)
+
+
+    Al obtener las estadísticas del objetivo a eliminar, no coincide el tipo con el de un archivo, siendo un directorio impide la eliminación.
+
+
+- [ ] Intentar eliminar un directorio no vacio con rmdir:
+
+    Eliminación del directorio prueba que contiene al archivo prueba:
+
+        gaby@gaby:~/fisopfs$ touch to_mount/prueba/archivo_prueba
+        gaby@gaby:~/fisopfs$ rmdir to_mount/prueba/
+        rmdir: failed to remove 'to_mount/prueba/': Directory not empty
+
+    Debug:
+        
+        [...]        
+
+        [debug] fisopfs_getattr(/prueba)
+        [debug] fisopfs_rmdir(/prueba)
+
+
+    El objetivo coincide con el tipo directorio, pero al no estar vacío falla durante rmdir.
+
+
+- [ ] Lectura sobre un archivo inexistente:
+
+    Ejecución de cat sobre archivo prueba previamente eliminado:
+
+        gaby@gaby:~/fisopfs$ rm to_mount/prueba/archivo_prueba 
+        gaby@gaby:~/fisopfs$ cat to_mount/prueba/archivo_prueba
+        cat: to_mount/prueba/archivo_prueba: No such file or directory
+
+    Debug:
+
+        [...]
+
+
+        [debug] fisopfs_getattr(/prueba)
+        [debug] fisopfs_getattr(/prueba/archivo_prueba)
+        [debug] error: No such file or directory
+
+        
+    Al intentar obtener las estadísticas del objetivo para posteriormente poder leer, falla por no existir el archivo.
+
+
+------------------------------
+
+    Hardlinks:
+
+- [ ] Creación de hardlink:
+
+    Ejecución de ln sobre un archivo existente para crear un hardlink:
+    
+        gaby@gaby:~/fisopfs$ echo hola > to_mount/source
+        gaby@gaby:~/fisopfs$ ln to_mount/source to_mount/link1
+
+    Debug:
+    
+        [...]
+
+        [debug] fisopfs_getattr(/link1)
+        [debug] error: No such file or directory
+        [debug] fisopfs_getattr(/source)
+        [debug] fisopfs_getattr(/link1)
+        [debug] error: No such file or directory
+        [debug] fisopfs_link(/source, /link1)
+        [debug] fisopfs_getattr(/link1)
+
+    Verificación del link creado con ls -li:
+
+        gaby@gaby:~/fisopfs$ ls -li to_mount/source to_mount/link1 
+        3 -rw-rw-r-- 2 gaby gaby 0 Dec  9 14:04 to_mount/link1
+        2 -rw-rw-r-- 2 gaby gaby 0 Dec  9 14:04 to_mount/source
+
+
+    Debug:
+
+        [debug] fisopfs_getattr(/source)
+        [debug] fisopfs_getattr(/link1)
+
+
+    Lectura del contenido del link:
+
+    
+        gaby@gaby:~/fisopfs$ cat to_mount/link1 
+        hola
+
+
+    El link fue creado exitosamente, en la tercer columna de ls -li se observa la cantidad de hardlinks actualmente en cada archivo. El contenido del link coincide con el del archivo original.
+
+
+- [ ] Creación de varios hardlink:
+
+   Ejecución de ln dos veces sobre un archivo existente para crear los hardlink:
+
+        gaby@gaby:~/fisopfs$ ln to_mount/source to_mount/link1
+        gaby@gaby:~/fisopfs$ ln to_mount/source to_mount/link2
+
+
+    Debug:
+    
+        [debug] fisopfs_getattr(/link1)
+        [debug] error: No such file or directory
+        [debug] fisopfs_getattr(/source)
+        [debug] fisopfs_getattr(/link1)
+        [debug] error: No such file or directory
+        [debug] fisopfs_link(/source, /link1)
+        [debug] fisopfs_getattr(/link1)
+
+
+        [debug] fisopfs_getattr(/link2)
+        [debug] error: No such file or directory
+        [debug] fisopfs_getattr(/source)
+        [debug] fisopfs_getattr(/link2)
+        [debug] error: No such file or directory
+        [debug] fisopfs_link(/source, /link2)
+        [debug] fisopfs_getattr(/link2)
+
+    Verificación con ls -li de los hardlink creados:
+
+        gaby@gaby:~/fisopfs$ ls -li to_mount/source to_mount/link1 to_mount/link2 
+        3 -rw-rw-r-- 3 gaby gaby 0 Dec  9 14:04 to_mount/link1
+        4 -rw-rw-r-- 3 gaby gaby 0 Dec  9 14:04 to_mount/link2
+        2 -rw-rw-r-- 3 gaby gaby 0 Dec  9 14:04 to_mount/source
+
+    
+    Debug:
+
+        [debug] fisopfs_getattr(/source)
+        [debug] fisopfs_getattr(/link1)
+        [debug] fisopfs_getattr(/link2)
+            
+
+    Se pudo crear correctamente el segundo hardlink y la cantidad aumentó correspondientemente.
+
+
+- [ ] Eliminación de hardlink:
+
+    Eliminación del segundo link con rm:
+
+        gaby@gaby:~/fisopfs$ rm to_mount/link2
+    
+    Debug:
+
+        [debug] fisopfs_getattr(/link2)
+        [debug] fisopfs_unlink(/link2)
+        [debug] fisopfs_getattr(/)
+
+    Verificación con ls -li de la eliminación:
+
+        gaby@gaby:~/fisopfs$ ls -li to_mount/source 
+        2 -rw-rw-r-- 2 gaby gaby 5 Dec  9 14:04 to_mount/source
+
+    Debug:
+    
+        [debug] fisopfs_getattr(/)
+
+
+    El link fue eliminado correctamente, 
+    
+
+- [ ] Eliminación del archivo parcial:
+    
+    Eliminación del archivo sin eliminar su link:
+
+        gaby@gaby:~/fisopfs$ rm to_mount/source 
+
+    Debug:
+
+        [debug] fisopfs_getattr(/source)
+        [debug] fisopfs_unlink(/source)
+        [debug] fisopfs_getattr(/)
+
+    Verificación del contenido en el link:
+
+        gaby@gaby:~/fisopfs$ cat to_mount/link1 
+        hola
+
+    Debug:
+
+        [debug] fisopfs_getattr(/link1)
+        [debug] fisopfs_read(/link1, 0, 4096)
+        [debug] fisopfs_flush
+
+
+    El archivo no fue realmente eliminado dado que aún tenía un hardlink "link1", el cual al leerlo mantiene el contenido del archivo.
+
 
 
 # Funcionalidad
