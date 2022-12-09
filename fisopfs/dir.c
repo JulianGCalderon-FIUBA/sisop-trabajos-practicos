@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <linux/limits.h>
 
-/*
+/**
  * Splits the path on the last forward slash.
  * Writes parent's dir path (including trailing slash) in the second argument,
  * and returns pointer to the character that followed the last slash (the child's name)
@@ -24,10 +24,11 @@ split_path(const char *path, char *parent_dir_path)
 	return last_slash_pos + 1;
 }
 
-/*
+/**
  * Returns the dir_entry at offset through the dir_entry_dest parameter.
  * If offset points to EOF, dir_entry_dest->name[0] == '\0', and
- * dir_entry_dest->inode_id == -1 Upon error returns the error code.
+ * dir_entry_dest->inode_id == -1.
+ * Returns inode_read return value on error.
  */
 int
 read_directory(inode_t *dir, size_t offset, dir_entry_t *dir_entry_dest)
@@ -39,15 +40,14 @@ read_directory(inode_t *dir, size_t offset, dir_entry_t *dir_entry_dest)
 		dir_entry_dest->name[0] = '\0';
 		dir_entry_dest->inode_id = -1;
 
-		// if inode_read didn't return an error (partial read), return -1 (generic error)
-		return ret_val >= 0 ? -1 : -ret_val;
+		return ret_val;
 	}
 	return EXIT_SUCCESS;
 }
 
-/*
- * Given a dir and a relative path, returns the inode_id for the file/directory
- * targeted by path If none is found, returns -1.
+/**
+ * Given a dir and a relative path, returns the inode_id for the
+ * file/directory targeted by path If none is found, returns -1.
  */
 int
 _get_iid_from_path(superblock_t *superblock, inode_t *dir, char *path)
@@ -89,7 +89,7 @@ _get_iid_from_path(superblock_t *superblock, inode_t *dir, char *path)
 	return -ENOENT;
 }
 
-/*
+/**
  * Given an absolute path, returns the inode_id for the file/directory targeted
  * by path Upon error, returns a negated error code path must start with /
  */
@@ -107,7 +107,7 @@ get_iid_from_path(superblock_t *superblock, const char *path)
 	                          path_copy + 1);
 }
 
-/*
+/**
  * ret_val is negative upon error
  */
 int
@@ -119,22 +119,25 @@ create_dir_entry(superblock_t *superblock,
 	dir_entry_t dir_entry = { .inode_id = entry_inode_id };
 	strcpy(dir_entry.name, name);
 
-	ssize_t ret_val = inode_write((char *) &dir_entry,
-	                              sizeof(dir_entry_t),
-	                              parent_dir,
-	                              parent_dir->stats.st_size);
-
 	inode_t *inode;
 	int ret_value = get_inode_from_iid(superblock, entry_inode_id, &inode);
 	if (ret_value != EXIT_SUCCESS) {
 		return ret_value;
 	}
-	inode->stats.st_nlink++;
 
-	return ret_val > 0 ? EXIT_SUCCESS : ret_val;
+	ssize_t ret_value2 = inode_write((char *) &dir_entry,
+	                                 sizeof(dir_entry_t),
+	                                 parent_dir,
+	                                 parent_dir->stats.st_size);
+	if (ret_value2 < 0) {
+		return ret_value2;
+	}
+
+	inode->stats.st_nlink++;
+	return EXIT_SUCCESS;
 }
 
-/*
+/**
  * Remove a dir_entry, freeing the inode
  */
 int
@@ -151,7 +154,7 @@ unlink_dir_entry(superblock_t *superblock, inode_t *dir, const char *name)
 	}
 	// check that dir_entry was found
 	if (strcmp(deleted_dir_entry.name, name))
-		return ENOENT;
+		return -ENOENT;
 
 	dir_entry_t last_dir_entry;
 	read_directory(dir,
@@ -172,7 +175,7 @@ unlink_dir_entry(superblock_t *superblock, inode_t *dir, const char *name)
 	inode_t *deleted;
 	if (get_inode_from_iid(superblock, deleted_dir_entry.inode_id, &deleted) !=
 	    EXIT_SUCCESS) {
-		return ENOENT;
+		return -ENOENT;
 	}
 	deleted->stats.st_nlink--;
 	if (deleted->stats.st_nlink == 0) {
@@ -181,7 +184,7 @@ unlink_dir_entry(superblock_t *superblock, inode_t *dir, const char *name)
 	return EXIT_SUCCESS;
 }
 
-/*
+/**
  * Does not set the inode id inside the inode struct, must be done previously
  *  ret_val is negative upon error, else EXIT_SUCCESS
  */
@@ -197,15 +200,17 @@ init_dir(superblock_t *superblock, inode_t *dir, int parent_inode_id, mode_t mod
 	return create_dir_entry(superblock, dir, parent_inode_id, "..");
 }
 
-/*
+/**
  * Returns dir's inode_id or negative error.
  */
 int
 create_dir(superblock_t *superblock, const char *name, int parent_inode_id, mode_t mode)
 {
 	inode_t *dir = malloc_inode(superblock);
+
+
 	if (!dir)
-		return ENOMEM;
+		return -ENOMEM;
 
 	int dir_inode_id = dir->stats.st_ino;
 	int ret_val = init_dir(superblock, dir, parent_inode_id, mode);
@@ -216,12 +221,24 @@ create_dir(superblock_t *superblock, const char *name, int parent_inode_id, mode
 
 	// increase parent's link count, and add self to parent's dir_entries
 	inode_t *parent_dir;
-
 	if (get_inode_from_iid(superblock, parent_inode_id, &parent_dir) ==
 	            EXIT_SUCCESS &&
 	    dir_inode_id != ROOT_DIR_INODE_ID) {
 		create_dir_entry(superblock, parent_dir, dir_inode_id, name);
 	}
 
+
 	return dir->stats.st_ino;
+}
+
+/**
+ * Gets inode from path
+ */
+int
+get_inode_from_path(superblock_t *superblock, const char *path, inode_t **inode_dest)
+{
+	int inode_id = get_iid_from_path(superblock, path);
+	if (inode_id < 0)
+		return inode_id;
+	return get_inode_from_iid(superblock, inode_id, inode_dest);
 }

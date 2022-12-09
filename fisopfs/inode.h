@@ -38,7 +38,7 @@ typedef struct {
 } superblock_t;
 
 
-/*
+/**
  * Marks a free inode as occupied, and returns a pointer to the inode.
  * Upon failure, returns NULL.
  * The inode stats are not initialised, except for the inode_id.
@@ -47,47 +47,40 @@ typedef struct {
  */
 inode_t *malloc_inode(superblock_t *superblock);
 
-/*
+/**
  * Marks an inode as free so it can be reused.
  * Frees a memory page if there are no alloc'd inodes in the page.
  */
 void free_inode(superblock_t *superblock, int inode_id);
 
-/*
+/**
  * Stores in inode_dest a pointer to the inode, or NULL in case of error.
  * The actual inode can be modified through the pointer, it is not a copy.
  */
 int get_inode_from_iid(superblock_t *superblock, int inode_id, inode_t **inode_dest);
 
 
-/*
- *
+/** *
  *
  */
 ssize_t inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t offset);
 
-/*
+/**
  * DOES NOT Null terminate the buffer
  */
 ssize_t
 inode_read(char *buffer, size_t bytes_to_read, inode_t *inode, size_t offset);
 
-/*
+/**
  * Inode changes size to min(inode.stats.st_size, offset)
  * Bytes at the end of the file are removed
  */
 int inode_truncate(inode_t *inode, size_t offset);
 
-/*
+/**
  * Initialises inode with default values
  */
 void init_inode(inode_t *inode, int inode_id);
 
-/*
- * Stores in inode_dest a pointer to the inode, or NULL in case of error.
- */
-int get_inode_from_path(superblock_t *superblock,
-                        const char *path,
-                        inode_t **inode_dest);
 
 #endif  // INODE_H

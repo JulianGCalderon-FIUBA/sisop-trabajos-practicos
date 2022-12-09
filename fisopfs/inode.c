@@ -10,27 +10,31 @@
 #include <unistd.h>
 
 
+/**
+ * Returns highest page number needed to hold a file of size `size`
+ */
 int
 highest_page_number_for_size(off_t size)
 {
 	return size ? (size - 1) / PAGE_SIZE : 0;
 }
 
-/*
- *
+/**
+ * Stores inode matching id in `inode_dest`.
+ * Returns 0 on success, negative error on failure
  */
 int
 get_inode_from_iid(superblock_t *superblock, int inode_id, inode_t **inode_dest)
 {
 	if (inode_id < 0)
-		return EINVAL;
+		return -EINVAL;
 
 	int table_num = inode_id / INODES_PER_TABLE;
 
 	// if table is free, there is no inode
 	if (bitmap_getbit(&superblock->free_tables_bitmap, table_num)) {
 		*inode_dest = NULL;
-		return ENOENT;
+		return -ENOENT;
 	}
 
 	int inode_pos = inode_id % INODES_PER_TABLE;
@@ -39,15 +43,16 @@ get_inode_from_iid(superblock_t *superblock, int inode_id, inode_t **inode_dest)
 	if (bitmap_getbit(&superblock->inode_tables[table_num]->free_inodes_bitmap,
 	                  inode_pos)) {
 		*inode_dest = NULL;
-		return ENOENT;
+		return -ENOENT;
 	}
 
 	*inode_dest = &superblock->inode_tables[table_num]->inodes[inode_pos];
+
 	return EXIT_SUCCESS;
 }
 
 
-/*
+/**
  * Returns the position of the table in superblock->inode_tables,
  * or a negative error code upon failure.
  */
@@ -84,8 +89,8 @@ malloc_inode_table(superblock_t *superblock)
 	return free_table_num;
 }
 
-/*
- *
+/**
+ * Frees an inode table, returns `munmap` return value
  */
 int
 free_inode_table(superblock_t *superblock, int table_num)
@@ -94,11 +99,15 @@ free_inode_table(superblock_t *superblock, int table_num)
 	return munmap(superblock->inode_tables[table_num], PAGE_SIZE);
 }
 
+/**
+ * Allocates memory for an inode page,
+ * return 0 on success, or negative error on failure
+ */
 int
 malloc_inode_page(inode_t *inode, int page_num)
 {
 	if (page_num > PAGES_PER_INODE)
-		return EFBIG;
+		return -EFBIG;
 
 	char *page = mmap(NULL,
 	                  PAGE_SIZE,
@@ -107,7 +116,7 @@ malloc_inode_page(inode_t *inode, int page_num)
 	                  -1,
 	                  0);
 	if (page == NULL)
-		return ENOMEM;
+		return -ENOMEM;
 
 	inode->pages[page_num] = page;
 	inode->stats.st_blocks++;
@@ -115,6 +124,9 @@ malloc_inode_page(inode_t *inode, int page_num)
 	return EXIT_SUCCESS;
 }
 
+/**
+ * Frees an inode page, returns 'munmap' return value
+ */
 int
 free_inode_page(inode_t *inode, int page_num)
 {
@@ -127,7 +139,9 @@ free_inode_page(inode_t *inode, int page_num)
 
 	return munmap(page, PAGE_SIZE);
 }
-
+/**
+ *	Inits inode with default value
+ */
 void
 init_inode(inode_t *inode, int inode_id)
 {
@@ -180,10 +194,10 @@ first_free_inode(superblock_t *superblock)
 		return free_inode_id;
 	}
 
-	return -1;
+	return -EXIT_FAILURE;
 }
 
-/*
+/**
  * Marks a free inode as occupied, and returns a pointer to the inode.
  * The inode stats are not initialised, except for the inode_id.
  * Does not request memory. If there are no free inodes, returns NULL.
@@ -211,7 +225,7 @@ alloc_inode(superblock_t *superblock)
 }
 
 
-/*
+/**
  * Marks a free inode as occupied, and returns a pointer to the inode.
  * Upon failure, returns NULL.
  * The inode stats are not initialised, except for the inode_id.
@@ -241,7 +255,7 @@ malloc_inode(superblock_t *superblock)
 	return inode_dest;
 }
 
-/*
+/**
  * Marks an inode as free so it can be reused.
  * Frees a memory page if there are no alloc'd inodes in the page.
  */
@@ -278,6 +292,10 @@ max(size_t x, size_t y)
 	return x > y ? x : y;
 }
 
+/**
+ *	Reads `total_bytes_to_read` from an inode at `file_offset` into `buffer`
+ * 	Returns amount of bytes read of negative error on failure.
+ */
 ssize_t
 inode_read(char *buffer, size_t total_bytes_to_read, inode_t *inode, size_t file_offset)
 {
@@ -310,7 +328,9 @@ inode_read(char *buffer, size_t total_bytes_to_read, inode_t *inode, size_t file
 
 	return total_bytes_to_read - bytes_remaining;
 }
-
+/**
+ * Frees last `pages_to_free` pages from `inode`
+ */
 void
 free_unneeded_pages(inode_t *inode, int pages_to_free)
 {
@@ -321,6 +341,11 @@ free_unneeded_pages(inode_t *inode, int pages_to_free)
 	}
 }
 
+/**
+ * Allocs `pages_to_alloc` pages for inode
+ * Either allocs all needed pages or none
+ * Returns 0 on success, or negative error on failure
+ */
 int
 alloc_needed_pages(inode_t *inode, int pages_to_alloc)
 {
@@ -338,7 +363,12 @@ alloc_needed_pages(inode_t *inode, int pages_to_alloc)
 	return EXIT_SUCCESS;
 }
 
-
+/**
+ *	Writes `buffer_len` from `buffer` into `inode` at `file_offset`
+ * 	Returns amount of bytes write of negative error on failure.
+ * 	Either writes all buffer or none
+ * 	Returns 0 on success, or negative error upon failure
+ */
 ssize_t
 inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 {
@@ -385,6 +415,10 @@ inode_write(char *buffer, size_t buffer_len, inode_t *inode, size_t file_offset)
 	return buffer_len;
 }
 
+/**
+ * Grows an inode size in `growth`, setting all new data to 0
+ * Returns 0 on success or negative error upon failure
+ */
 int
 inode_positive_truncate(inode_t *inode, size_t growth)
 {
@@ -410,9 +444,10 @@ inode_positive_truncate(inode_t *inode, size_t growth)
 	return ret_val;
 }
 
-/*
- * Inode changes size to min(inode.stats.st_size, offset)
- * Bytes at the end of the file are removed
+/**
+ * 	Truncates inode to new_size, if a growth is needed,
+ * 	 new bytes are set to 0.
+ * 	Returns 0 on success, or negative error on failure
  */
 int
 inode_truncate(inode_t *inode, size_t new_size)
@@ -431,13 +466,4 @@ inode_truncate(inode_t *inode, size_t new_size)
 	inode->stats.st_size = new_size;
 
 	return EXIT_SUCCESS;
-}
-
-int
-get_inode_from_path(superblock_t *superblock, const char *path, inode_t **inode_dest)
-{
-	int inode_id = get_iid_from_path(superblock, path);
-	if (inode_id < 0)
-		return -inode_id;
-	return get_inode_from_iid(superblock, inode_id, inode_dest);
 }

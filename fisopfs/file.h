@@ -4,7 +4,7 @@
 #include <fuse.h>
 
 
-/*
+/**
  * Returns file's inode_id or negative error.
  */
 int create_file(superblock_t *superblock,

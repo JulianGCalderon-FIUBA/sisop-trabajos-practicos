@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
-/*
+/**
  * Returns file's inode_id or negative error.
  */
 int
@@ -31,5 +31,6 @@ create_file(superblock_t *superblock,
 	    EXIT_SUCCESS) {
 		create_dir_entry(superblock, parent_dir, file_inode_id, name);
 	}
+
 	return file->stats.st_ino;
 }

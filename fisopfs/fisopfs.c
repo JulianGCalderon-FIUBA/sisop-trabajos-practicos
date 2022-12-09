@@ -27,8 +27,8 @@ fisopfs_getattr(const char *path, struct stat *st)
 	inode_t *inode;
 	int ret_val = get_inode_from_path(&superblock, path, &inode);
 	if (ret_val != EXIT_SUCCESS) {
-		printf("[debug] error: %s\n", strerror(ret_val));
-		return -ret_val;
+		printf("[debug] error: %s\n", strerror(-ret_val));
+		return ret_val;
 	}
 
 	*st = inode->stats;
@@ -47,8 +47,8 @@ fisopfs_readdir(const char *path,
 	inode_t *directory;
 	int ret_val = get_inode_from_path(&superblock, path, &directory);
 	if (ret_val != EXIT_SUCCESS) {
-		printf("[debug] error: %s\n", strerror(ret_val));
-		return -ret_val;
+		printf("[debug] error: %s\n", strerror(-ret_val));
+		return ret_val;
 	}
 
 	// get dir_entry inode
@@ -83,10 +83,18 @@ fisopfs_mkdir(const char *path, mode_t mode)
 	char *new_dirs_name = split_path(path, parent_dir_path);
 	int inode_id = get_iid_from_path(&superblock, parent_dir_path);
 	if (inode_id < 0) {
+		printf("[debug] error: %s\n", strerror(-inode_id));
 		return -ENOENT;
 	}
+
 	// returns 0 if create_dir succeeds
-	return create_dir(&superblock, new_dirs_name, inode_id, mode) < 0;
+	int ret_value = create_dir(&superblock, new_dirs_name, inode_id, mode);
+	if (ret_value < 0) {
+		printf("[debug] error: %s\n", strerror(-ret_value));
+		return ret_value;
+	}
+
+	return EXIT_SUCCESS;
 }
 
 static int
@@ -99,8 +107,8 @@ fisopfs_unlink(const char *path)
 	inode_t *dir;
 	int ret_val = get_inode_from_path(&superblock, parent_dir_path, &dir);
 	if (ret_val != EXIT_SUCCESS) {
-		printf("[debug] error: %s\n", strerror(ret_val));
-		return -ret_val;
+		printf("[debug] error: %s\n", strerror(-ret_val));
+		return ret_val;
 	}
 
 	return unlink_dir_entry(&superblock, dir, childs_name);
@@ -115,8 +123,8 @@ fisopfs_rmdir(const char *path)
 	inode_t *dir;
 	int ret_val = get_inode_from_path(&superblock, path, &dir);
 	if (ret_val != EXIT_SUCCESS) {
-		printf("[debug] error: %s\n", strerror(ret_val));
-		return -ret_val;
+		printf("[debug] error: %s\n", strerror(-ret_val));
+		return ret_val;
 	}
 	if (dir->stats.st_size > 2 * sizeof(dir_entry_t)) {
 		return -ENOTEMPTY;
@@ -138,7 +146,11 @@ fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *file_info)
 	int dir_id = get_iid_from_path(&superblock, parent_dir_path);
 	int ret_val =
 	        create_file(&superblock, file_name, dir_id, mode, file_info);
-	return ret_val < 0 ? -ret_val : EXIT_SUCCESS;
+	if (ret_val < 0) {
+		printf("[debug] error: %s\n", strerror(-ret_val));
+	}
+
+	return EXIT_SUCCESS;
 }
 
 static int
@@ -153,8 +165,8 @@ fisopfs_read(const char *path,
 	inode_t *file_inode;
 	int ret_val = get_inode_from_path(&superblock, path, &file_inode);
 	if (ret_val != EXIT_SUCCESS) {
-		printf("[debug] error: %s\n", strerror(ret_val));
-		return -ret_val;
+		printf("[debug] error: %s\n", strerror(-ret_val));
+		return ret_val;
 	}
 
 	ssize_t size_read = inode_read(buffer, size, file_inode, offset);
@@ -184,8 +196,8 @@ fisopfs_write(const char *path,
 	inode_t *file_inode;
 	int ret_val = get_inode_from_path(&superblock, path, &file_inode);
 	if (ret_val != EXIT_SUCCESS) {
-		printf("[debug] error: %s\n", strerror(ret_val));
-		return -ret_val;
+		printf("[debug] error: %s\n", strerror(-ret_val));
+		return ret_val;
 	}
 
 	ssize_t size_written =
@@ -203,8 +215,8 @@ fisopfs_truncate(const char *path, off_t offset)
 	inode_t *inode;
 	int ret_val = get_inode_from_path(&superblock, path, &inode);
 	if (ret_val != EXIT_SUCCESS) {
-		printf("[debug] error: %s\n", strerror(ret_val));
-		return -ret_val;
+		printf("[debug] error: %s\n", strerror(-ret_val));
+		return ret_val;
 	}
 	return inode_truncate(inode, offset);
 }
@@ -264,8 +276,8 @@ fisopfs_utimens(const char *path, const struct timespec tv[2])
 	inode_t *inode;
 	int ret_val = get_inode_from_path(&superblock, path, &inode);
 	if (ret_val != EXIT_SUCCESS) {
-		printf("[debug] error: %s\n", strerror(ret_val));
-		return -ret_val;
+		printf("[debug] error: %s\n", strerror(-ret_val));
+		return ret_val;
 	}
 
 	inode->stats.st_atim = tv[0];
