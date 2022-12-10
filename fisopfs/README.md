@@ -18,7 +18,7 @@ Luego, para recuperar la información se tiene que seguir el mismo orden:
 2. Se reserva memoria por cada tabla ocupada y se guardan en ella los inodos.
 3. Por cada tabla, si el inodo no estaba vacío se reservan las páginas correspondientes y se escribe el contenido indicado.
     
-De esta forma, se puede guardar y recuperar la información del sistema de archivos.
+De esta forma, se puede guardar y recuperar la información del sistema de archivos. Para que la persistencia funcione el proceso se tiene que ejecutar como *super user* o en foreground, ya que por temas de permisos si se lo ejecuta normal no funciona.
     
 
 ## Funcionalidad
