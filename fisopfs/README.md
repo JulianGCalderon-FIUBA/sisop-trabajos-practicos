@@ -8,15 +8,15 @@ Por otra parte, el sistema de archivos también ofrece soporte para *hard links*
 
 Cuando se cierra el filesystem o se llama a `flush` se guarda toda la información que luego se recupera cuando se inicializa el sistema de archivos, permitiendo así persistencia en disco. El guardado se realiza en el siguiente orden: 
 
-1. se escribe el bitmap de las tablas de inodos, para saber cuáles estaban ocupadas.
-2. se escribe cada tabla ocupada.
-3. por cada tabla, escribe las páginas de los inodos ocupados en orden.
+1. Se escribe el bitmap de las tablas de inodos, para saber cuáles estaban ocupadas.
+2. Se escribe cada tabla ocupada.
+3. Por cada tabla, escribe las páginas de los inodos ocupados en orden.
 
 Luego, para recuperar la información se tiene que seguir el mismo orden:
 
-1. se guarda en el bitmap del superbloque qué tablas están ocupadas.
-2. se reserva memoria por cada tabla ocupada y se guardan en ella los inodos.
-3. por cada tabla, si el inodo no estaba vacío se reservan las páginas correspondientes y se escribe el contenido indicado.
+1. Se guarda en el bitmap del superbloque qué tablas están ocupadas.
+2. Se reserva memoria por cada tabla ocupada y se guardan en ella los inodos.
+3. Por cada tabla, si el inodo no estaba vacío se reservan las páginas correspondientes y se escribe el contenido indicado.
     
 De esta forma, se puede guardar y recuperar la información del sistema de archivos.
     
