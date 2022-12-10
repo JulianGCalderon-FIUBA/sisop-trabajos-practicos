@@ -1,6 +1,39 @@
 # fisopfs
 
-Sistema de archivos tipo FUSE.
+Nuestro sistema de archivos tipo FUSE consiste de un **superbloque** que guarda las distintas **tablas de inodos** y un bitmap que indica las tablas libres. Cada tabla guarda una cantidad de **inodos** y un bitmap que indica qué inodos están libres. Los inodos son estructuras que guardan metadata tanto sobre archivos como sobre directorios, y tienen una relación uno a uno con los archivos/directorios, es decir, hay un inodo por archivo/directorio. A su vez, los inodos contienen referencias a las páginas de contenido cada archivo/directorio. En el caso de un archivo, el contenido será un stream de bytes, y en el caso de un directorio el contenido de la página serán distintas **dir_entry**, que guardan información sobre los archivos o directorios dentro del directorio al que se está accediendo.
+
+El superbloque reside en stack, y se inicializa cuando comienza el proceso del sistema de archivos. Las demás estructuras residen en el heap y se va reservando memoria para ellas a medida que sea necesario. Cada estructura tiene un tamaño máximo establecido; se pueden tener hasta 128 tablas de inodos, y cada tabla mide lo mismo que una página (4096 bytes), por lo que la cantidad de inodos que puede sostener una tabla dependerá del tamaño de las páginas y de la estructura del inodo. Por otro lado, cada archivo/directorio tiene dedicadas hasta 5 páginas, cada una de 4096 bytes. El hecho de que las páginas tengan ese tamaño facilita reservar memoria utilizando `mmap` y `munmap`. El número 5 para la cantidad de páginas fue elegido para evitar tener archivos muy extensos. Luego, si bien hay soporte para múltiples niveles de directorios, la cantidad máxima de niveles dependerá del tamaño máximo establecido para el largo de un *path*. 
+
+Por otra parte, el sistema de archivos también ofrece soporte para *hard links*. Esto implica que utilizando la syscall `link` se pueden crear archivos nuevos linkeados a archivos existentes, nuevos punteros al archivo.
+
+Cuando se cierra el filesystem o se llama a `flush` se guarda toda la información que luego se recupera cuando se inicializa el sistema de archivos, permitiendo así persistencia en disco. El guardado se realiza en el siguiente orden: 
+
+    - se escribe el bitmap de las tablas de inodos, para saber cuáles estaban ocupadas.
+    - se escribe cada tabla ocupada.
+    - por cada tabla, escribe las páginas de los inodos ocupados en orden.
+
+Luego, para recuperar la información se tiene que seguir el mismo orden:
+
+    - se guarda en el bitmap del superbloque qué tablas están ocupadas.
+    - se reserva memoria por cada tabla ocupada y se guardan en ella los inodos.
+    - por cada tabla, si el inodo no estaba vacío se reservan las páginas correspondientes y se escribe el contenido indicado.
+    
+De esta forma, se puede guardar y recuperar la información del sistema de archivos.
+    
+
+## Funcionalidad
+
+Para buscar un archivo con el path '/directorio/archivo' se debe hacer lo siguiente:
+
+1. Entrar al inodo 0 (root directory) y acceder a la información del directorio root '/'.
+2. Buscar 'directorio' entre los dir_entries de '/' para encontrar su inodo.
+3. Conseguir la tabla de inodos correspondiente al inodo indexando el arreglo `inode_tables`.
+4. En la tabla de inodos acceder al inodo de 'directorio', para acceder a su data.
+5. En las páginas de '/directorio' buscar la dir_entry de 'archivo' para obtener su inodo.
+6. Conseguir la tabla de inodos correspondiente al inodo indexando el arreglo `inode_tables`.
+7. En la tabla de inodos buscar el inodo de 'archivo' para acceder a su data.
+8. Entrar a las páginas de 'archivo' y realizar la operación correspondiente.
+
 
 # Pruebas
 
@@ -534,16 +567,4 @@ Sistema de archivos tipo FUSE.
     El archivo no fue realmente eliminado dado que aún tenía un hardlink "link1", el cual al leerlo mantiene el contenido del archivo.
 
 
-
-# Funcionalidad
-
-Para buscar un archivo con el path '/directorio/archivo' se debe hacer lo siguiente:
-1. Entrar al inodo 0 (root directory) y acceder a la información del directorio root '/'.
-2. Buscar 'directorio' entre los dir_entries de '/' para encontrar su inodo.
-3. Conseguir la tabla de inodos correspondiente al inodo indexando el arreglo `inode_tables`.
-4. En la tabla de inodos acceder al inodo de 'directorio', para acceder a su data.
-5. En las páginas de '/directorio' buscar la dir_entry de 'archivo' para obtener su inodo.
-6. Conseguir la tabla de inodos correspondiente al inodo indexando el arreglo `inode_tables`.
-7. En la tabla de inodos buscar el inodo de 'archivo' para acceder a su data.
-8. Entrar a las páginas de 'archivo' y realizar la operación correspondiente.
 
