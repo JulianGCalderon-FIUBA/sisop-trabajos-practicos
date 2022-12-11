@@ -10,8 +10,6 @@
 #include <string.h>
 #include <sys/wait.h>
 
-#define TEST_DIR "/home/julian/sisop/sisop_2022b_g02/fisopfs/tests"
-#define MOUNT_DIR "/home/julian/sisop/sisop_2022b_g02/fisopfs"
 
 int
 main()
@@ -26,12 +24,12 @@ main()
 		return 0;
 	}
 
-	chdir(TEST_DIR);
+	chdir("tests");
 
 	system("gcc readwrite.c -o readwrite.o");
 	system("./readwrite.o");
 
-	chdir(MOUNT_DIR);
+	chdir("..");
 
 	system("sudo umount tests/to_mount");
 	system("rmdir tests/to_mount");
