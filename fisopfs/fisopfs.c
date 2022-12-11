@@ -79,6 +79,11 @@ static int
 fisopfs_mkdir(const char *path, mode_t mode)
 {
 	printf("[debug] fisopfs_mkdir(%s)\n", path);
+    if(strlen(path) > PATH_MAX){
+		printf("[debug] error max path size reached\n");
+		return ENAMETOOLONG;
+	}
+    
 	char parent_dir_path[PATH_MAX];
 	char *new_dirs_name = split_path(path, parent_dir_path);
 	int inode_id = get_iid_from_path(&superblock, parent_dir_path);
